@@ -12,6 +12,10 @@ from . import sprites as S
 from .constants import NES_PALETTE, TILE
 
 SCREEN_W, SCREEN_H = C.SCREEN_W, C.SCREEN_H
+# Sur NES, les sprites s'affichent une ligne plus bas que leur coordonnée
+# (décalage de l'OAM) : les pieds de Mario et des ennemis recouvrent la
+# première rangée (claire) des blocs de sol.
+SPRITE_DY = 1
 
 # Tuiles dessinées une fois pour toutes (elles ne changent jamais)
 STATIC_TILES = {
@@ -216,7 +220,7 @@ class Renderer:
         if area == "overworld":
             fx = L.FLAGPOLE_COL * TILE - 8 - cam
             if -16 < fx < SCREEN_W:
-                draw(frame, "flag", "flag", fx, g.flag_y)
+                draw(frame, "flag", "flag", fx, g.flag_y + SPRITE_DY)
                 if g.mode == "flag":
                     pts = C.FLAGPOLE_POINTS[g.flag_score_idx]
                     mini_text(frame, str(pts), fx + 20, g.flag_score_y)
@@ -234,10 +238,11 @@ class Renderer:
         for f in g.fireballs:
             if f.explode:
                 i = min(2, 2 - (f.explode - 1) // 4)
-                draw(frame, f"explosion{i}", "fireball", f.x - cam - 4, f.y - 4)
+                draw(frame, f"explosion{i}", "fireball", f.x - cam - 4,
+                     f.y - 4 + SPRITE_DY)
             else:
                 draw(frame, f"fireball{(f.anim // 4) % 4}", "fireball",
-                     f.x - cam, f.y)
+                     f.x - cam, f.y + SPRITE_DY)
         self._draw_effects(frame, cam, area)
         self.draw_hud(frame)
         return frame
@@ -249,11 +254,13 @@ class Renderer:
             return
         k = e.kind
         dead = e.state == "dead"
+        # un objet qui sort d'un bloc ne doit pas dépasser sous le bloc
+        dy = 0 if e.state == "rise" else SPRITE_DY
         if k == "goomba":
             if e.state == "flat":
-                draw(frame, "goomba_flat", "goomba", x, e.y + 16)
+                draw(frame, "goomba_flat", "goomba", x, e.y + 16 + SPRITE_DY)
             else:
-                draw(frame, "goomba", "goomba", x, e.y + 8,
+                draw(frame, "goomba", "goomba", x, e.y + 8 + SPRITE_DY,
                      flip=bool((fc // 8) & 1) and not dead, vflip=dead)
         elif k == "koopa":
             if e.state in ("shell", "shell_move") or dead:
@@ -261,18 +268,19 @@ class Renderer:
                 if e.state == "shell" and e.timer < 3 * C.INTERVAL \
                         and (fc // 4) & 1:
                     name = "shell_legs"
-                draw(frame, name, "koopa", x, e.y, vflip=dead)
+                draw(frame, name, "koopa", x, e.y + SPRITE_DY, vflip=dead)
             else:
                 name = "koopa1" if (fc // 8) & 1 else "koopa2"
-                draw(frame, name, "koopa", x, e.y, flip=e.moving_dir == 1)
+                draw(frame, name, "koopa", x, e.y + SPRITE_DY,
+                     flip=e.moving_dir == 1)
         elif k in ("mushroom", "1up"):
             draw(frame, "mushroom", "mushroom" if k == "mushroom" else "1up",
-                 x, e.y + 8)
+                 x, e.y + 8 + dy)
         elif k == "flower":
-            draw(frame, "flower", f"flower{(fc // 2) % 4 + 1}", x, e.y + 8)
+            draw(frame, "flower", f"flower{(fc // 2) % 4 + 1}", x, e.y + 8 + dy)
         elif k == "star":
             draw(frame, "star", ("star_a", "star_b", "star_c", "star_d")[
-                (fc // 2) % 4], x, e.y + 8)
+                (fc // 2) % 4], x, e.y + 8 + dy)
 
     def _player_sprite(self, fc):
         g = self.game
@@ -315,7 +323,7 @@ class Renderer:
         else:
             pal = "fire" if p.status == 2 else "mario"
         x = p.x - cam
-        y = p.y + (16 if name.startswith("small") else 0)
+        y = p.y + (16 if name.startswith("small") else 0) + SPRITE_DY
         draw(frame, name, pal, x, y, flip=flip)
         if p.behind_bg:
             fg = self._fgmask[area][:, cam:cam + SCREEN_W]
@@ -329,7 +337,7 @@ class Renderer:
     def _draw_effects(self, frame, cam, area):
         for fx in self.game.effects:
             x = int(fx.x) - cam
-            y = int(fx.y)
+            y = int(fx.y) + SPRITE_DY
             if fx.kind == "debris":
                 pal = "underground" if area == "bonus" else "ground"
                 draw(frame, "debris", pal, x, y, flip=bool((fx.t // 4) & 1))

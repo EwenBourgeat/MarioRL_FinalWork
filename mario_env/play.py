@@ -67,6 +67,11 @@ def main(argv=None):
     parser.add_argument("--no-blocks", action="store_true")
     parser.add_argument("--no-powerups", action="store_true")
     parser.add_argument("--fps", type=int, default=C.FPS)
+    parser.add_argument("--nes-timer", action="store_true",
+                        help="chrono du jeu NES (1 unité = 24 images ≈ 0,4 s) "
+                             "au lieu de vraies secondes")
+    parser.add_argument("--nes-camera", action="store_true",
+                        help="caméra du jeu NES (ne revient jamais en arrière)")
     parser.add_argument("--grid", choices=["v1", "v2", "v3"], default=None,
                         help="jouer à l'environnement discret de l'article")
     parser.add_argument("--segments", default=None,
@@ -91,6 +96,8 @@ def main(argv=None):
 
     cfg = GameConfig(
         segment_order=args.segments,
+        timer_frames=C.GAME_TIMER_TICK if args.nes_timer else C.FPS,
+        scroll_back=not args.nes_camera,
         lives=args.lives,
         enemies=not args.no_enemies,
         blocks=not args.no_blocks,

@@ -157,3 +157,25 @@ def test_permuted_levels_run(order):
     g = Game(GameConfig(segment_order=order))
     run(g, C.BTN_RIGHT, 200)
     assert g.frame == 200
+
+
+def test_timer_frames_option():
+    g = Game(GameConfig(enemies=False, timer_frames=60))
+    run(g, 0, 120)
+    assert g.timer == 398
+    g = Game(GameConfig(enemies=False))
+    run(g, 0, 120)
+    assert g.timer == 395
+
+
+def test_scroll_back_option():
+    for back in (False, True):
+        g = Game(GameConfig(enemies=False, scroll_back=back))
+        run(g, C.BTN_RIGHT, 150)
+        run(g, C.BTN_LEFT, 30)         # fin du dérapage
+        cam = g.cam_x
+        run(g, C.BTN_LEFT, 120)
+        if back:
+            assert g.cam_x < cam and g.p.x >= g.cam_x
+        else:
+            assert g.cam_x == cam

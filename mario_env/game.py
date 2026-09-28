@@ -34,7 +34,8 @@ class GameConfig:
     def __init__(self, lives=3, blocks=True, enemies=True, powerups=True,
                  bonus_room=True, hidden_1up=True, start_status=0,
                  halfway=True, end_sequence=True, timer=True,
-                 segment_order=None):
+                 segment_order=None, timer_frames=C.GAME_TIMER_TICK,
+                 scroll_back=False):
         self.lives = lives              # nombre de vies (3 comme l'original)
         self.blocks = blocks            # briques / blocs ? (v2 de l'article)
         self.enemies = enemies          # Goombas + Koopa (v3 de l'article)
@@ -48,6 +49,11 @@ class GameConfig:
         # ordre des segments A-F (expérience de curriculum de l'article) ;
         # None ou "ABCDEF" = niveau original
         self.segment_order = segment_order
+        # images par unité du chrono : 24 sur NES (1 unité ≈ 0,4 s),
+        # 60 pour un chrono en vraies secondes
+        self.timer_frames = timer_frames
+        # la caméra suit aussi Mario vers la gauche (absent du jeu NES)
+        self.scroll_back = scroll_back
 
 
 class Game:
@@ -135,7 +141,7 @@ class Game:
         self.mode = "play"
         self.mode_timer = 0
         self.timer = C.GAME_TIMER_START
-        self.timer_tick = C.GAME_TIMER_TICK
+        self.timer_tick = self.cfg.timer_frames
         self.scroll_lock = False
         self.block_bounce_timer = 0
         self.brick_coin_timers = {}
@@ -272,7 +278,7 @@ class Game:
             return
         self.timer_tick -= 1
         if self.timer_tick <= 0:
-            self.timer_tick = C.GAME_TIMER_TICK
+            self.timer_tick = self.cfg.timer_frames
             if self.timer > 0:
                 self.timer -= 1
                 if self.timer == 0:
@@ -460,6 +466,9 @@ class Game:
                 if rel >= 0x70:
                     amount = xs
                 self.cam_x = min(self.cam_x + amount, self.cam_max)
+        elif (self.cfg.scroll_back and not self.scroll_lock
+              and p.x_scroll < 0 and rel < 0x60):
+            self.cam_x = max(0, self.cam_x + p.x_scroll)
         if p.x < self.cam_x:
             p.x = self.cam_x
             if p.x_speed < 0:
@@ -870,6 +879,10 @@ class Game:
                     or e.x > cam + C.SCREEN_W + C.ENEMY_DESPAWN_MARGIN
                     or e.y > 256):
                 e.alive = False
+                # caméra arrière : un ennemi sorti par la droite réapparaîtra
+                if (self.cfg.scroll_back and e.uid < 1000 and e.state == "walk"
+                        and e.x > cam + C.SCREEN_W):
+                    self.spawned.discard(e.uid)
         if self.frame & 1 == 0:
             self._player_enemy_collisions()
         self._enemy_enemy_collisions()

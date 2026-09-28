@@ -49,8 +49,17 @@ python play.py --status fire      # commencer en Mario de feu
 python play.py --no-enemies       # sans ennemis
 python play.py --segments FEDCBA  # segments A-F dans l'ordre inverse
 python play.py --grid v3          # jouer à l'environnement discret de l'article
+python play.py --nes-timer        # chrono d'origine (1 unité = 0,4 s)
+python play.py --nes-camera       # caméra d'origine (ne revient pas en arrière)
 python play.py --help
 ```
+
+Par défaut, `play.py` affiche un chrono en **vraies secondes** et la caméra
+**suit Mario vers la gauche**. Sur la NES, une unité du chrono dure 24 images
+(≈ 0,4 s) et l'écran ne revient jamais en arrière : les options `--nes-timer`
+et `--nes-camera` rétablissent ce comportement. Les environnements RL gardent
+le comportement NES par défaut ; on peut le changer avec
+`gym.make("MarioNES-v0", timer_frames=60, scroll_back=True)`.
 
 | Action | Clavier | Manette |
 |---|---|---|
@@ -106,6 +115,8 @@ place ; Entrée pour recommencer après la fin.
   (hauteur du rebond de l'étoile, vitesse du drapeau, durées d'animation) sont
   reconstitués et peuvent différer légèrement de l'original.
 * Après le château, le niveau **recommence** (1-2 n'existe pas).
+* Dans `play.py` uniquement, le chrono en secondes réelles et la caméra qui
+  revient en arrière sont des ajouts (désactivables, voir section 2).
 
 ---
 
