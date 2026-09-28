@@ -1,0 +1,4 @@
+numpy>=1.23
+gymnasium>=0.29
+pygame-ce>=2.3
+pytest>=7

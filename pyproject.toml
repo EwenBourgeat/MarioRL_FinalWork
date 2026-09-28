@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mario-env"
+version = "1.0.0"
+description = "Super Mario Bros. niveau 1-1 (copie du jeu NES) + environnements Gymnasium pour l'apprentissage par renforcement"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.23", "gymnasium>=0.29"]
+
+[project.optional-dependencies]
+play = ["pygame-ce>=2.3"]
+dev = ["pygame-ce>=2.3", "pytest>=7"]
+
+[project.scripts]
+mario-play = "mario_env.play:main"
+
+[tool.setuptools.packages.find]
+include = ["mario_env*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
