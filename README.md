@@ -37,22 +37,39 @@ Dépendances : `numpy`, `gymnasium`, `pygame-ce` (affichage/clavier seulement),
 `pytest` (tests). Le moteur et les environnements fonctionnent **sans pygame**
 (mode sans affichage pour l'entraînement).
 
-Vérification : `python -m pytest` (56 tests, < 1 s).
+Vérification : `python -m pytest` (60 tests, quelques secondes).
 
 ---
 
 ## 2. Jouer
 
 ```bash
-python play.py                    # jeu complet
+python play.py                    # écran titre (menu)
+python play.py --no-menu          # lancer directement la version NES
+python play.py --grid v3          # lancer directement la version simplifiée
 python play.py --status fire      # commencer en Mario de feu
 python play.py --no-enemies       # sans ennemis
 python play.py --segments FEDCBA  # segments A-F dans l'ordre inverse
-python play.py --grid v3          # jouer à l'environnement discret de l'article
 python play.py --nes-timer        # chrono d'origine (1 unité = 0,4 s)
 python play.py --nes-camera       # caméra d'origine (ne revient pas en arrière)
 python play.py --help
 ```
+
+**Écran titre.** Le jeu s'ouvre sur l'écran titre de Super Mario Bros. :
+début du niveau 1-1 en fond, HUD, panneau « SUPER MARIO BROS. ©1985
+NINTENDO », curseur champignon et meilleur score (« TOP- »). Les deux options
+d'origine (1 / 2 PLAYER GAME) sont remplacées par :
+
+* **VERSION NES** : le vrai jeu ;
+* **VERSION SIMPLIFIEE V3** : l'environnement discret de l'article, jouable
+  (← → sur cette ligne pour choisir V1, V2 ou V3) ;
+* **QUITTER**.
+
+Comme sur la NES, **SELECT** (Tab, ou ↑ / ↓) déplace le champignon et
+**START** (Entrée) valide. En jeu, **Échap** ramène à l'écran titre, comme
+après un GAME OVER.
+
+![Écran titre](docs/ecran_titre.png)
 
 Par défaut, `play.py` affiche un chrono en **vraies secondes** et la caméra
 **suit Mario vers la gauche**. Sur la NES, une unité du chrono dure 24 images
@@ -67,11 +84,14 @@ le comportement NES par défaut ; on peut le changer avec
 | Baisser (entrer dans un tuyau, s'accroupir) | ↓ (ou S) | croix bas |
 | Sauter (bouton A) | X, K ou Espace | bouton 0 |
 | Courir / boule de feu (bouton B) | C, J, Z ou Maj | bouton 1 / 2 |
-| Pause | Entrée ou P | |
-| Quitter | Échap | |
+| Pause (START) | Entrée ou P | Start |
+| SELECT (écran titre) | Tab, ↑ / ↓ | Select, croix |
+| Retour à l'écran titre | Échap | |
 
-En mode `--grid` : → avance d'une case, X/Espace/↑ saute, rien = rester sur
-place ; Entrée pour recommencer après la fin.
+Version simplifiée : → avance d'une case, X/Espace saute, rien = rester sur
+place (un pas toutes les 8 images) ; le HUD affiche le retour cumulé, la
+version et le nombre de pas. À la fin : « THANK YOU MARIO! » (drapeau),
+« GAME OVER » (mort) ou « TIME UP » (1000 pas), puis retour à l'écran titre.
 
 **Astuces (comme dans le jeu original)**
 * **Salle bonus** : montez sur le **4ᵉ tuyau** (colonne 57, le deuxième grand

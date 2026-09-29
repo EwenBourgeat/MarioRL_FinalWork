@@ -52,6 +52,9 @@ PAL = {
     "castle_flag": {"W": 0x30, "R": 0x16, "G": 0x1A},
     "pole": {"L": 0x29, "G": 0x1A, "K": 0x0F},
     "white": {"X": 0x30},
+    "peach": {"X": 0x36},
+    "black": {"X": 0x0F},
+    "cursor": {"R": 0x16, "W": 0x36, "K": 0x0F},
     "firework": {"R": 0x16, "O": 0x27, "W": 0x30},
 }
 
@@ -980,7 +983,24 @@ FONT = {
     "!": ["...XX...", "..XXXX..", "..XXXX..", "...XX...", "...XX...", "........", "...XX...", "........"],
     ".": ["........", "........", "........", "........", "........", "...XX...", "...XX...", "........"],
     " ": ["........"] * 8,
+    "Q": [".XXXXX..", "XX...XX.", "XX...XX.", "XX...XX.", "XX.XXXX.", "XX..XX..", ".XXXX.X.", "........"],
+    "J": ["....XXX.", ".....XX.", ".....XX.", ".....XX.", "XX...XX.", "XX...XX.", ".XXXXX..", "........"],
+    "X": ["XX...XX.", "XX...XX.", ".XX.XX..", "..XXX...", ".XX.XX..", "XX...XX.", "XX...XX.", "........"],
+    "Z": ["XXXXXXX.", "....XXX.", "...XXX..", "..XXX...", ".XXX....", "XXX.....", "XXXXXXX.", "........"],
+    "©": ["..XXXX..", ".X....X.", "X..XX..X", "X.X....X", "X.X....X", "X..XX..X", ".X....X.", "..XXXX.."],
 }
+
+# Curseur du menu (petit champignon 8 x 8 de l'écran titre)
+CURSOR = [
+    "..RRRR..",
+    ".RWRRWR.",
+    "RWWRRWWR",
+    "RRRRRRRR",
+    "KRWWWWRK",
+    "..WKKW..",
+    "..WWWW..",
+    "........",
+]
 MINI = {
     "0": [".XX.", "X..X", "X..X", "X..X", ".XX."],
     "1": [".X..", "XX..", ".X..", ".X..", "XXX."],
@@ -1099,6 +1119,7 @@ def _register_all():
     for i, a in enumerate(COIN_SPIN):
         register(f"coin_spin{i}", a)
     register("hud_coin", HUD_COIN)
+    register("cursor", CURSOR)
     for k in range(4):
         register(f"fireball{k}", ["".join(r) for r in np.rot90(
             np.array([list(r) for r in FIREBALL]), -k)])

@@ -52,14 +52,53 @@ def draw(frame, name, pal, x, y, flip=False, vflip=False):
     blit(frame, img, mask, x, y)
 
 
-def text(frame, s, x, y):
+def text(frame, s, x, y, pal="white"):
     for i, ch in enumerate(s):
         if ch == " ":
             continue
         key = "font_" + ch
         if key[5:] not in S.FONT:
             continue
-        draw(frame, key, "white", x + 8 * i, y)
+        draw(frame, key, pal, x + 8 * i, y)
+
+
+def _glyph_mask(ch):
+    return np.array([[c == "X" for c in row] for row in S.FONT[ch]],
+                    dtype=bool)
+
+
+def _fill_mask(frame, mask, x, y, color):
+    h, w = mask.shape
+    x0, y0 = max(x, 0), max(y, 0)
+    x1, y1 = min(x + w, frame.shape[1]), min(y + h, frame.shape[0])
+    if x0 < x1 and y0 < y1:
+        m = mask[y0 - y:y1 - y, x0 - x:x1 - x]
+        frame[y0:y1, x0:x1][m] = color
+
+
+def logo_text(frame, word, x, y, sx, sy, shadow):
+    """Lettres agrandies du logo (face claire + ombre noire en bas à droite)."""
+    face = NES_PALETTE[0x36]
+    dark = NES_PALETTE[0x0F]
+    cx = x
+    for ch in word:
+        if ch == " ":
+            cx += 8
+            continue
+        m = np.kron(_glyph_mask(ch), np.ones((sy, sx), dtype=bool))
+        for d in range(1, shadow + 1):
+            _fill_mask(frame, m, cx + d, y + d, dark)
+        _fill_mask(frame, m, cx, y, face)
+        cx += m.shape[1]
+    return cx
+
+
+# Écran titre : panneau « SUPER MARIO BROS. » (palette du sol : pêche,
+# brun, noir), options, curseur champignon et meilleur score.
+TITLE_BOARD = (32, 32, 224, 112)          # x0, y0, x1, y1
+TITLE_OPTION_X = 56
+TITLE_OPTION_Y = 136
+TITLE_TOP_Y = 184
 
 
 def mini_text(frame, s, x, y):
@@ -351,11 +390,11 @@ class Renderer:
                 draw(frame, f"explosion{i}", "firework", x, y)
 
     # ------------------------------------------------------------------
-    def draw_hud(self, frame, show_time=True):
+    def draw_hud(self, frame, show_time=True, fc=None):
         g = self.game
         text(frame, "MARIO", 24, 16)
         text(frame, f"{g.score:06d}", 24, 24)
-        cpal = COIN_CYCLE[(g.frame // 8) % 6]
+        cpal = COIN_CYCLE[((g.frame if fc is None else fc) // 8) % 6]
         draw(frame, "hud_coin", cpal, 88, 24)
         text(frame, "x", 96, 24)
         text(frame, f"{g.coins:02d}", 104, 24)
@@ -376,6 +415,41 @@ class Renderer:
         else:
             text(frame, message, 128 - 4 * len(message), 112)
         return frame
+
+    def render_title(self, options, cursor, top_score=0, fc=0):
+        """Écran titre de Super Mario Bros. avec nos options de menu.
+
+        Même composition que l'original : début du niveau 1-1 en fond, Mario
+        au départ, HUD sans le chrono, panneau du titre, options et curseur
+        champignon, puis « TOP- » et le meilleur score.
+        """
+        if "overworld" not in self._static:
+            self._build_static("overworld")
+        frame = self._static["overworld"][:, 0:SCREEN_W].copy()
+        draw(frame, "small_stand", "mario", L.START_X,
+             L.START_Y + 16 + SPRITE_DY)
+        self.draw_hud(frame, show_time=False, fc=fc)
+        self._draw_title_board(frame)
+        for i, label in enumerate(options):
+            text(frame, label, TITLE_OPTION_X, TITLE_OPTION_Y + 16 * i,
+                 pal="peach")
+        draw(frame, "cursor", "cursor", TITLE_OPTION_X - 16,
+             TITLE_OPTION_Y + 16 * cursor)
+        text(frame, f"TOP- {top_score:06d}", 96, TITLE_TOP_Y, pal="peach")
+        return frame
+
+    @staticmethod
+    def _draw_title_board(frame):
+        x0, y0, x1, y1 = TITLE_BOARD
+        frame[y0:y1, x0:x1] = NES_PALETTE[0x0F]              # contour noir
+        frame[y0 + 1:y1 - 1, x0 + 1:x1 - 1] = NES_PALETTE[0x36]  # liseré
+        frame[y0 + 2:y1 - 2, x0 + 2:x1 - 2] = NES_PALETTE[0x17]  # panneau
+        # ombre du panneau (bords bas et droit plus sombres)
+        frame[y1 - 3:y1 - 1, x0 + 2:x1 - 1] = NES_PALETTE[0x0F]
+        frame[y0 + 2:y1 - 1, x1 - 3:x1 - 1] = NES_PALETTE[0x0F]
+        logo_text(frame, "SUPER", x0 + 12, y0 + 8, 2, 2, 1)
+        logo_text(frame, "MARIO BROS.", x0 + 12, y0 + 28, 2, 3, 2)
+        text(frame, "©1985 NINTENDO", x1 - 14 - 8 * 14, y1 - 18, pal="peach")
 
     def render_level_map(self, area="overworld", enemies=True):
         """Image du niveau complet (utile pour les rapports / figures)."""
