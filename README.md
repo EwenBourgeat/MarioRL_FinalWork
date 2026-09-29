@@ -52,8 +52,13 @@ python play.py --no-enemies       # sans ennemis
 python play.py --segments FEDCBA  # segments A-F dans l'ordre inverse
 python play.py --nes-timer        # chrono d'origine (1 unité = 0,4 s)
 python play.py --nes-camera       # caméra d'origine (ne revient pas en arrière)
+python play.py --fullscreen       # plein écran
 python play.py --help
 ```
+
+**Plein écran** : option `--fullscreen`, ou **F11** / **Cmd+F** (Mac) /
+**Ctrl+F** à tout moment pour basculer. L'image garde les proportions de
+l'écran NES (bandes noires sur les côtés).
 
 **Écran titre.** Le jeu s'ouvre sur l'écran titre de Super Mario Bros. :
 début du niveau 1-1 en fond, HUD, panneau « SUPER MARIO BROS. ©1985
@@ -87,6 +92,7 @@ le comportement NES par défaut ; on peut le changer avec
 | Pause (START) | Entrée ou P | Start |
 | SELECT (écran titre) | Tab, ↑ / ↓ | Select, croix |
 | Retour à l'écran titre | Échap | |
+| Plein écran / fenêtre | F11, Cmd+F ou Ctrl+F | |
 
 Version simplifiée : → avance d'une case, X/Espace saute, rien = rester sur
 place (un pas toutes les 8 images) ; le HUD affiche le retour cumulé, la

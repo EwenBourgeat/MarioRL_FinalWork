@@ -72,3 +72,15 @@ def test_game_over_returns_to_title(monkeypatch):
     assert app.visited == ["nes", "gameover"]
     # de retour sur l'écran titre : le panneau brun est affiché
     assert tuple(app.last_frame[100, 40]) == (0xC8, 0x4C, 0x0C)
+
+
+def test_fullscreen_toggle_keeps_aspect():
+    k = pygame
+    app = make_app({3: [k.K_F11], 6: [k.K_F11], 8: [k.K_ESCAPE]})
+    app.run_title()
+    assert app.closed and app.fullscreen is False
+    app.toggle_fullscreen()
+    frame = app.title_renderer.render_title(app.menu_labels(), 0)
+    app._present(frame, fps=0)
+    app.toggle_fullscreen()
+    assert app.screen.get_size() == (256, 240)

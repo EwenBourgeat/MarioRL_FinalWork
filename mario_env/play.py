@@ -79,6 +79,7 @@ class App:
         self.args = args
         self.pg = pygame
         self.screen = screen
+        self.fullscreen = False
         self.joy = joy
         self.clock = pygame.time.Clock()
         self.surf = pygame.Surface((C.SCREEN_W, C.SCREEN_H))
@@ -130,6 +131,9 @@ class App:
                     out.append("left")
                 elif k in (pg.K_RIGHT, pg.K_d):
                     out.append("right")
+                elif k == pg.K_F11 or (k == pg.K_f and event.mod
+                                       & (pg.KMOD_META | pg.KMOD_CTRL)):
+                    self.toggle_fullscreen()
                 elif k == pg.K_ESCAPE:
                     out.append("back")
                 elif k == pg.K_p:
@@ -155,14 +159,34 @@ class App:
                     out.append("right")
         return out
 
+    def toggle_fullscreen(self):
+        """Bascule plein écran / fenêtre (F11 ou Cmd+F / Ctrl+F)."""
+        pg = self.pg
+        self.fullscreen = not self.fullscreen
+        if self.fullscreen:
+            self.screen = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+        else:
+            s = max(1, self.args.scale)
+            self.screen = pg.display.set_mode((C.SCREEN_W * s, C.SCREEN_H * s))
+
     def _present(self, frame, fps=None):
         pg = self.pg
         self.last_frame = frame
         pg.surfarray.blit_array(self.surf, frame.swapaxes(0, 1))
-        if self.screen.get_size() != self.surf.get_size():
-            pg.transform.scale(self.surf, self.screen.get_size(), self.screen)
-        else:
+        sw, sh = self.screen.get_size()
+        if (sw, sh) == self.surf.get_size():
             self.screen.blit(self.surf, (0, 0))
+        else:
+            # agrandissement en gardant les proportions de l'écran NES
+            # (bandes noires sur les côtés en plein écran)
+            k = min(sw / C.SCREEN_W, sh / C.SCREEN_H)
+            w, h = int(C.SCREEN_W * k), int(C.SCREEN_H * k)
+            if (w, h) == (sw, sh):
+                pg.transform.scale(self.surf, (sw, sh), self.screen)
+            else:
+                self.screen.fill((0, 0, 0))
+                self.screen.blit(pg.transform.scale(self.surf, (w, h)),
+                                 ((sw - w) // 2, (sh - h) // 2))
         pg.display.flip()
         self.clock.tick(self.args.fps if fps is None else fps)
 
@@ -355,6 +379,8 @@ class App:
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Super Mario Bros. 1-1")
+    parser.add_argument("--fullscreen", action="store_true",
+                        help="plein écran (F11 ou Cmd+F pour basculer)")
     parser.add_argument("--scale", type=int, default=3,
                         help="facteur d'agrandissement de la fenêtre")
     parser.add_argument("--lives", type=int, default=3)
@@ -394,6 +420,8 @@ def main(argv=None, script=None):
     joy = pygame.joystick.Joystick(0) if pygame.joystick.get_count() else None
 
     app = App(args, pygame, screen, joy, script)
+    if args.fullscreen:
+        app.toggle_fullscreen()
     if args.grid:
         app.run_grid(args.grid)
     elif args.no_menu:
