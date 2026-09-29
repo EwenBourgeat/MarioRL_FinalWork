@@ -398,11 +398,12 @@ class Renderer:
             draw(img, "flag", "flag", L.FLAGPOLE_COL * TILE - 8, g.flag_y)
             if enemies and g.cfg.enemies:
                 for sp in g.enemy_spawns:
-                    y = sp.row * TILE - 24
-                    if sp.kind == "goomba":
-                        draw(img, "goomba", "goomba", sp.x, y + 8)
-                    else:
-                        draw(img, "koopa1", "koopa", sp.x, y)
+                    y = sp.y + 8                # après la petite chute initiale
+                    for x in sp.visual_positions():
+                        if sp.kind == "goomba":
+                            draw(img, "goomba", "goomba", x, y + 8)
+                        else:
+                            draw(img, "koopa1", "koopa", x, y)
             p = g.p
             draw(img, "small_stand", "mario", L.START_X, L.START_Y + 16)
         return img

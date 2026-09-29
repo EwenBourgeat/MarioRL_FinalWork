@@ -75,33 +75,55 @@ START_Y = 176               # Mario debout sur le sol (haut d'une boîte 32 px)
 HALFWAY_PAGE = 5            # point de reprise (page de 256 px)
 
 
+GROUP_SPACING = 24          # écart entre les membres d'un groupe (px)
+GROUND_ENEMY_Y = 0xB0       # ordonnée d'apparition d'un ennemi au sol
+
+
 @dataclass(frozen=True)
 class EnemySpawn:
+    """Un objet de la liste d'ennemis du jeu (données ``E_GroundArea6``).
+
+    Un ennemi seul apparaît à sa colonne dès qu'elle arrive à moins de 48 px
+    du bord droit de l'écran.  Un *groupe* de Goombas est déclenché de la
+    même façon, mais ses membres sont placés au bord droit de l'écran
+    (espacés de 24 px) : ils apparaissent donc environ 3 colonnes avant la
+    colonne des données, là où les montrent les cartes du niveau.
+    """
     kind: str        # "goomba" ou "koopa"
-    x: int           # position x (px) du bord gauche
-    row: int         # rangée sur laquelle il se tient (dessus du bloc = row*16)
-    spawn_x: int     # abscisse qui déclenche l'apparition (chef de groupe)
+    col: int         # colonne de l'objet dans les données du jeu
+    y: int           # ordonnée NES à l'apparition (0xB0 = sol, 0x30 = briques)
+    count: int = 1   # 2 pour un groupe de Goombas
+
+    @property
+    def x(self):
+        return self.col * TILE
+
+    @property
+    def group(self):
+        return self.count > 1
+
+    def visual_positions(self):
+        """Abscisses (px) où les ennemis apparaissent sur les cartes."""
+        if not self.group:
+            return [self.x]
+        return [self.x - 48 + GROUP_SPACING * k for k in range(self.count)]
 
 
-def _group(kind, col, count, row=13):
-    base = col * TILE
-    # Les groupes NES espacent leurs membres de 24 px (1,5 bloc).
-    return [EnemySpawn(kind, base + i * 24, row, base) for i in range(count)]
-
-
-# 16 Goombas + 1 Koopa Troopa (vert), comme dans l'original.
-ENEMIES = tuple(
-    _group("goomba", 22, 1)
-    + _group("goomba", 40, 1)
-    + _group("goomba", 51, 2)
-    + _group("goomba", 80, 2, row=HIGH_ROW)      # sur la rangée de briques
-    + _group("goomba", 97, 2)
-    + _group("koopa", 107, 1)
-    + _group("goomba", 114, 2)
-    + _group("goomba", 124, 2)
-    + _group("goomba", 128, 2)
-    + _group("goomba", 174, 2)
+# 16 Goombas + 1 Koopa Troopa vert, dans l'ordre des données du jeu.
+ENEMIES = (
+    EnemySpawn("goomba", 22, GROUND_ENEMY_Y),
+    EnemySpawn("goomba", 40, GROUND_ENEMY_Y),
+    EnemySpawn("goomba", 54, GROUND_ENEMY_Y, 2),     # apparaît en 51 et 52,5
+    EnemySpawn("goomba", 80, 0x30),                  # sur les briques hautes
+    EnemySpawn("goomba", 82, 0x30),
+    EnemySpawn("goomba", 100, GROUND_ENEMY_Y, 2),    # 97 et 98,5
+    EnemySpawn("koopa", 107, GROUND_ENEMY_Y),
+    EnemySpawn("goomba", 117, GROUND_ENEMY_Y, 2),    # 114 et 115,5
+    EnemySpawn("goomba", 127, GROUND_ENEMY_Y, 2),    # 124 et 125,5
+    EnemySpawn("goomba", 131, GROUND_ENEMY_Y, 2),    # 128 et 129,5
+    EnemySpawn("goomba", 177, GROUND_ENEMY_Y, 2),    # 174 et 175,5
 )
+MAX_ENEMIES = 5             # le jeu n'a que 5 emplacements d'ennemis
 
 # ---------------------------------------------------------------------------
 # Décor d'arrière-plan (se répète toutes les 48 colonnes, cf. BackSceneryData)
@@ -243,13 +265,8 @@ def permute_grid(grid, order, spawn_col=START_X // TILE):
 def permute_enemies(enemies, order):
     cols = segment_columns(order)
     inv = {old: new for new, old in enumerate(cols)}
-    out = []
-    for e in enemies:
-        oc, off = divmod(e.x, TILE)
-        sc, soff = divmod(e.spawn_x, TILE)
-        out.append(EnemySpawn(e.kind, inv[oc] * TILE + off, e.row,
-                              inv[sc] * TILE + soff))
-    out.sort(key=lambda s: (s.spawn_x, s.x))
+    out = [EnemySpawn(e.kind, inv[e.col], e.y, e.count) for e in enemies]
+    out.sort(key=lambda s: s.col)
     return tuple(out)
 
 

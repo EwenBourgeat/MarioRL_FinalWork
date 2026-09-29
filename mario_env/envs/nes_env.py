@@ -160,9 +160,6 @@ class MarioNESEnv(gym.Env):
         g.p.state = 2
         g.cam_x = max(0, min(x - 80, g.cam_max))
         g.max_x = x
-        for i, sp in enumerate(g.enemy_spawns):
-            if sp.x + 16 < g.cam_x:
-                g.spawned.add(i)
 
     def step(self, action):
         g = self.game

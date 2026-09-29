@@ -54,14 +54,21 @@ def paper_grid(level="v3", segment_order=None):
 
 
 def paper_enemies(segment_order=None):
-    """Liste (colonne, rangée, groupe) des 17 ennemis en coordonnées article."""
+    """Liste (colonne, rangée, groupe) des 17 ennemis en coordonnées article.
+
+    Les colonnes sont celles où les ennemis apparaissent sur la carte (figure
+    2 de l'article) : un groupe NES de la colonne c apparaît en c-3 et c-1,5,
+    arrondi à c-3 et c-1.
+    """
     spawns = L.ENEMIES
     if segment_order and "".join(segment_order).upper() != L.SEGMENT_ORDER:
         spawns = L.permute_enemies(spawns, segment_order)
     out = []
     for sp in spawns:
-        col = -(-sp.x // C.TILE)            # 51 et 52,5 -> 51 et 53
-        out.append((col, sp.row - 2, sp.spawn_x // C.TILE))
+        row = (sp.y + 8 + 24) // C.TILE - 2      # rangée où l'ennemi se tient
+        xs = sp.visual_positions()
+        for x in xs:
+            out.append((-(-x // C.TILE), row, xs[0] // C.TILE))
     return out
 
 

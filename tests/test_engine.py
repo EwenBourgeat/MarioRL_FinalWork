@@ -179,3 +179,44 @@ def test_scroll_back_option():
             assert g.cam_x < cam and g.p.x >= g.cam_x
         else:
             assert g.cam_x == cam
+
+
+def _flag_jump(jump_frame, speed=0x28, run=True):
+    """Mario court sur le haut de l'escalier final (col. 188) et saute."""
+    g = Game(GameConfig(enemies=False))
+    g.p.x, g.p.y, g.p.state = 188 * 16, 80 - 32, 0
+    g.p.x_speed = g.p.x_abs = speed
+    g.cam_x = g.p.x - 112
+    base = C.BTN_RIGHT | (C.BTN_B if run else 0)
+    for f in range(200):
+        g.step(base | (C.BTN_A if f >= jump_frame else 0))
+        if g.level_complete:
+            return C.FLAGPOLE_POINTS[g.flag_score_idx]
+        if f > jump_frame + 2 and g.p.state == 0 and g.p.y > 150:
+            return None                     # retombé avant le mât
+    return None
+
+
+def test_flagpole_top_needs_full_speed_jump_at_the_edge():
+    # à pleine vitesse, un saut au tout dernier moment donne 5000 points
+    results = [_flag_jump(k) for k in range(12)]
+    assert 5000 in results
+    assert results[0] == 2000               # sauter trop tôt : 2000
+    # en marchant, on ne peut pas atteindre le mât depuis l'escalier
+    assert all(_flag_jump(k, 0x18, run=False) is None for k in range(12))
+
+
+def test_goomba_groups_appear_at_screen_edge():
+    g = Game(GameConfig(timer=False))
+    first = {}
+    for _ in range(900):
+        g.p.star_timer = 100
+        g.p.x = min(g.p.x + 2, 45 * 16)     # avance sans obstacle
+        g.cam_x = max(g.cam_x, g.p.x - 112)
+        g.step(0)
+        for e in g.enemies:
+            first.setdefault(e.uid, (e.x, g.cam_x))
+    x, cam = first[20]                      # objet 2 = groupe de la colonne 54
+    assert x == cam + 255 - 1 or x == cam + 255
+    x2, _ = first[21]
+    assert x2 - x == 24

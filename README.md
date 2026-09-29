@@ -37,7 +37,7 @@ Dépendances : `numpy`, `gymnasium`, `pygame-ce` (affichage/clavier seulement),
 `pytest` (tests). Le moteur et les environnements fonctionnent **sans pygame**
 (mode sans affichage pour l'entraînement).
 
-Vérification : `python -m pytest` (48 tests, < 1 s).
+Vérification : `python -m pytest` (56 tests, < 1 s).
 
 ---
 
@@ -73,6 +73,19 @@ le comportement NES par défaut ; on peut le changer avec
 En mode `--grid` : → avance d'une case, X/Espace/↑ saute, rien = rester sur
 place ; Entrée pour recommencer après la fin.
 
+**Astuces (comme dans le jeu original)**
+* **Salle bonus** : montez sur le **4ᵉ tuyau** (colonne 57, le deuxième grand
+  tuyau, juste avant le premier trou), placez-vous **bien au milieu** et
+  appuyez sur **↓ sans toucher ← ou →**. Les deux pieds de Mario doivent être
+  sur le haut du tuyau (fenêtre de 9 pixels, comme sur NES). Dans la salle,
+  ramassez les pièces, descendez à droite du bloc de briques et avancez dans
+  le **tuyau horizontal en bas à droite** : Mario ressort par le tuyau de la
+  colonne 163, juste après les escaliers.
+* **Haut du drapeau (5000 points)** : il faut arriver sur la dernière marche
+  de l'escalier final **à pleine vitesse** (B maintenu) et sauter **au tout
+  dernier moment** en gardant A enfoncé. Un saut un peu trop tôt donne 2000
+  points ; en marchant, on retombe avant le mât.
+
 ![Situations de jeu](docs/situations.png)
 
 ---
@@ -84,12 +97,20 @@ place ; Entrée pour recommencer après la fin.
   28 / 38 / 46 / 57 / 163 / 179 (hauteurs 2 / 3 / 4 / 4 / 2 / 2) ; les 13 blocs
   « ? » (dont 3 power-ups), les briques, la brique à pièces multiples (col. 94),
   la brique à étoile (col. 101), le bloc 1-UP caché (col. 64), les 4 escaliers
-  et le grand escalier final, le mât (col. 198) et le château. Les colonnes sont
+  et le grand escalier final (col. 181-189), le mât (col. 198, soit 8 cases
+  vides après la dernière marche) et le château (col. 202). Les colonnes sont
   identiques à celles de la figure 2 de l'article.
-* **Ennemis** : 16 Goombas et 1 Koopa Troopa vert, aux positions d'origine
-  (groupes espacés de 24 px), apparition 48 px avant le bord droit de l'écran,
-  vitesse 0,5 px/image (1/3 de la marche de Mario), chute dans les trous,
-  demi-tour contre les murs et entre eux.
+* **Vérifié contre les données du jeu** : `tests/test_original_data.py`
+  décode les données d'origine du niveau (`L_GroundArea6` et `E_GroundArea6`
+  du désassemblage de Super Mario Bros.) et vérifie que la carte est
+  identique case par case, et que les ennemis le sont objet par objet.
+* **Ennemis** : 16 Goombas et 1 Koopa Troopa vert, chargés comme dans le jeu :
+  un objet par image quand sa colonne arrive à 48 px du bord droit de
+  l'écran, 5 emplacements d'ennemis au maximum ; les 6 **groupes de deux
+  Goombas** apparaissent au bord droit de l'écran (espacés de 24 px), donc
+  environ 3 colonnes avant la colonne des données, là où les montrent les
+  cartes. Vitesse 0,5 px/image (1/3 de la marche de Mario), chute dans les
+  trous, demi-tour contre les murs et entre eux.
 * **Physique du joueur** reprise des routines du jeu (`PlayerPhysicsSub`,
   `ImposeFriction`, `MoveObjectHorizontally`, `ImposeGravity`,
   `PlayerBGCollision`, `ImpedePlayerMove`, `ScrollHandler`) avec la même
@@ -111,7 +132,8 @@ place ; Entrée pour recommencer après la fin.
 * Les **sprites sont redessinés** pixel par pixel (aucun fichier ni ROM Nintendo
   n'est utilisé) : l'aspect est très proche mais pas strictement identique.
 * **Pas de son ni de musique**.
-* L'agencement exact de la **salle bonus** et quelques constantes secondaires
+* L'agencement exact de la **salle bonus** (non vérifié contre les données du
+  jeu, contrairement au reste du niveau) et quelques constantes secondaires
   (hauteur du rebond de l'étoile, vitesse du drapeau, durées d'animation) sont
   reconstitués et peuvent différer légèrement de l'original.
 * Après le château, le niveau **recommence** (1-2 n'existe pas).

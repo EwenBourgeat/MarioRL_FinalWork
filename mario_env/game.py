@@ -829,19 +829,42 @@ class Game:
     # Ennemis
     # ------------------------------------------------------------------
     def _spawn_enemies(self):
+        """ProcessEnemyData : traite au plus un objet ennemi par image.
+
+        L'objet suivant est chargé quand sa colonne arrive à moins de 48 px
+        du bord droit de l'écran.  S'il est déjà dans l'écran (retour de la
+        salle bonus, départ en cours de niveau) il est ignoré, comme sur NES.
+        Un ennemi seul apparaît à sa colonne ; un groupe apparaît au bord
+        droit de l'écran, ses membres espacés de 24 px.  Le jeu n'a que
+        5 emplacements d'ennemis.
+        """
         if not self.cfg.enemies or self.area != "overworld":
             return
-        limit = (self.cam_x + 255 + C.ENEMY_SPAWN_MARGIN) & ~0x0F
+        right = self.cam_x + 255
+        limit = (right + C.ENEMY_SPAWN_MARGIN) & ~0x0F
         for i, sp in enumerate(self.enemy_spawns):
             if i in self.spawned:
                 continue
-            if (sp.spawn_x & ~0x0F) > limit:
-                break
+            cx = sp.col * TILE
+            if cx > limit:
+                return
+            used = sum(1 for e in self.enemies if e.alive and not e.is_item)
+            free = L.MAX_ENEMIES - used
+            if cx >= right and free <= 0 and not sp.group:
+                return                      # pas de place : on réessaie
             self.spawned.add(i)
-            if sp.x + 16 < self.cam_x:
-                continue
-            self.enemies.append(
-                Enemy(sp.kind, sp.x, sp.row * TILE - 24, C.ENEMY_SPEED, uid=i))
+            if cx < right:
+                return                      # déjà à l'écran : ignoré
+            if sp.group:
+                xs = [right + L.GROUP_SPACING * k for k in range(sp.count)]
+                xs = xs[:max(free, 0)]
+            else:
+                xs = [cx]
+            for k, x in enumerate(xs):
+                e = Enemy(sp.kind, x, sp.y, C.ENEMY_SPEED, uid=i * 10 + k)
+                e.falling = True            # apparaît 8 px au-dessus du sol
+                self.enemies.append(e)
+            return
 
     def _update_enemies(self):
         cam = self.cam_x
@@ -880,9 +903,13 @@ class Game:
                     or e.y > 256):
                 e.alive = False
                 # caméra arrière : un ennemi sorti par la droite réapparaîtra
+                # (quand tous les membres de son objet ont disparu)
                 if (self.cfg.scroll_back and e.uid < 1000 and e.state == "walk"
                         and e.x > cam + C.SCREEN_W):
-                    self.spawned.discard(e.uid)
+                    idx = e.uid // 10
+                    if not any(o.alive and o.uid // 10 == idx
+                               for o in self.enemies if o.uid < 1000):
+                        self.spawned.discard(idx)
         if self.frame & 1 == 0:
             self._player_enemy_collisions()
         self._enemy_enemy_collisions()
@@ -1254,9 +1281,6 @@ class Game:
             self.enemies = []
             self.fireballs = []
             self.bumps = []
-            for i, sp in enumerate(self.enemy_spawns):
-                if sp.x + 16 < self.cam_x:
-                    self.spawned.add(i)
             p.x = L.EXIT_PIPE_COL * TILE + 8
             p.y = (13 - 2) * TILE          # haut du tuyau (hauteur 2)
             p.x_speed = 0

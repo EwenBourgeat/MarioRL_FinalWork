@@ -38,11 +38,11 @@ def test_blocks():
 
 
 def test_enemies_16_goombas_1_koopa():
-    kinds = [e.kind for e in L.ENEMIES]
-    assert kinds.count("goomba") == 16
-    assert kinds.count("koopa") == 1
-    # colonnes utilisées dans l'article (figure 2), arrondies vers le haut
-    cols = sorted(-(-e.x // 16) for e in L.ENEMIES)
+    goombas = sum(e.count for e in L.ENEMIES if e.kind == "goomba")
+    koopas = sum(e.count for e in L.ENEMIES if e.kind == "koopa")
+    assert goombas == 16 and koopas == 1
+    # colonnes où ils apparaissent (figure 2 de l'article), arrondies au-dessus
+    cols = sorted(-(-x // 16) for e in L.ENEMIES for x in e.visual_positions())
     assert cols == [22, 40, 51, 53, 80, 82, 97, 99, 107, 114, 116, 124,
                     126, 128, 130, 174, 176]
 
@@ -62,7 +62,7 @@ def test_segment_permutation_preserves_content():
         for t in (C.BRICK, C.QBLOCK_COIN, C.PIPE_TL):
             assert (g2 == t).sum() == (grid == t).sum()
         en = L.permute_enemies(L.ENEMIES, order)
-        assert len(en) == 17
+        assert sum(e.count for e in en) == 17
     assert L.segment_columns("ABCDEF") == list(range(212))
 
 
