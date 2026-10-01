@@ -74,8 +74,8 @@ class DQNAgent:
                  buffer_size=50_000, batch_size=64, train_every=4,
                  target_every=500, learning_starts=1000, hidden=128):
         torch.manual_seed(seed)
-        self.n_actions = n_actions
-        self.gamma = gamma
+        self.n_actions = int(n_actions)
+        self.gamma = float(gamma)
         self.batch_size = batch_size
         self.train_every = train_every
         self.target_every = target_every
@@ -151,10 +151,13 @@ class DQNAgent:
 
     # ------------------------------------------------------------------
     def save(self, path):
+        # uniquement des types Python simples : le fichier se recharge en
+        # mode sûr (weights_only), sans exécuter de code
         torch.save({"net": self.net.state_dict(),
-                    "obs_high": self.obs_high.tolist(),
-                    "n_actions": self.n_actions, "gamma": self.gamma,
-                    "hidden": self.hidden, "lr": self.lr}, path)
+                    "obs_high": [float(x) for x in self.obs_high],
+                    "n_actions": int(self.n_actions),
+                    "gamma": float(self.gamma), "hidden": int(self.hidden),
+                    "lr": float(self.lr)}, path)
 
     @classmethod
     def load(cls, path, seed=0):
