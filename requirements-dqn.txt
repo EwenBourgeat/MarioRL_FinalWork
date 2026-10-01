@@ -1,0 +1,3 @@
+# Dépendance supplémentaire pour DQN (réseau de neurones) :
+#   pip install -r requirements-dqn.txt
+torch>=2.0

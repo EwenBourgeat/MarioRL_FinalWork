@@ -67,7 +67,7 @@ def _ep(v):
     return "N/A (jamais)" if v is None else f"{v}"
 
 
-def format_metrics(m, level, greedy=None):
+def format_metrics(m, level, greedy=None, algo=None):
     """Tableau texte des mesures (en français)."""
     a, b = m["episodes"] - m["last"] + 1, m["episodes"]
     lines = [
@@ -91,7 +91,8 @@ def format_metrics(m, level, greedy=None):
         f"{m['timeout_rate']:.1%}",
         f"  Pas par épisode         : {m['avg_steps']:.1f}",
         f"  Epsilon final           : {m['epsilon_end']:.3f}",
-        f"  États dans la Q-table   : {m['n_states']}",
+        (f"  Pas en mémoire (replay) : {m['n_states']}" if algo == "dqn" else
+         f"  États dans la Q-table   : {m['n_states']}"),
     ]
     if greedy is not None:
         verdict = ("VICTOIRE" if greedy["win"] else

@@ -69,7 +69,7 @@ def save_model(agent, meta, history, tests, root=None, name=None,
                 created=datetime.now().isoformat(timespec="seconds"))
     meta["label"] = label(meta)
     meta["tests"] = tests
-    agent.save(path / "qtable.npz")
+    agent.save(path / getattr(agent, "FILENAME", "qtable.npz"))
     with open(path / "meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
     keys = list(history)
@@ -94,7 +94,8 @@ def list_models(root=None):
                 meta = json.load(f)
         except (OSError, ValueError):
             continue
-        if not (meta_file.parent / "qtable.npz").exists():
+        if not any((meta_file.parent / f).exists()
+                   for f in ("qtable.npz", "dqn.pt")):
             continue
         meta["path"] = str(meta_file.parent)
         meta.setdefault("label", label(meta))
@@ -104,7 +105,7 @@ def list_models(root=None):
 
 def load_agent(meta_or_path):
     """Recharge l'agent d'un modèle (dict de list_models ou chemin)."""
-    from .training import AGENT_CLASSES
+    from .training import agent_class
 
     if isinstance(meta_or_path, dict):
         path = Path(meta_or_path["path"])
@@ -113,8 +114,6 @@ def load_agent(meta_or_path):
         path = Path(meta_or_path)
         with open(path / "meta.json", encoding="utf-8") as f:
             meta = json.load(f)
-    algo = meta.get("algo", "qlearning")
-    if algo not in AGENT_CLASSES:
-        raise ValueError(f"algorithme non pris en charge : {algo}")
-    return AGENT_CLASSES[algo].load(path / "qtable.npz",
-                                    seed=meta.get("seed", 0))
+    cls = agent_class(meta.get("algo", "qlearning"))
+    return cls.load(path / getattr(cls, "FILENAME", "qtable.npz"),
+                    seed=meta.get("seed", 0))

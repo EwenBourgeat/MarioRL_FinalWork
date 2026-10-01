@@ -40,6 +40,8 @@ class QLearningAgent:
     beaucoup de mémoire quand les états sont nombreux (v3).
     """
 
+    FILENAME = "qtable.npz"         # nom du fichier dans models/<nom>/
+
     def __init__(self, n_actions=3, alpha=0.1, gamma=0.99, seed=42):
         self.n_actions = int(n_actions)
         self.alpha = float(alpha)

@@ -484,6 +484,18 @@ class App:
                         lambda i: self.model_info(models[i]),
                         lambda i: self.run_watch(models[i]))
 
+    def _show_message(self, lines, frames=GRID_END_FRAMES):
+        """Quelques lignes sur fond noir (Entrée ou Échap pour passer)."""
+        frame = self.title_renderer.render_message("")
+        for i, line in enumerate(lines):
+            text(frame, line, 128 - 4 * len(line), 96 + 16 * i)
+        for _ in range(frames):
+            if not self._tick():
+                return
+            if {"start", "back"} & set(self._actions()):
+                return
+            self._present(frame)
+
     def run_watch(self, meta):
         """Le modèle joue seul, sans exploration (comme le test glouton)."""
         from agents.registry import load_agent
@@ -491,7 +503,12 @@ class App:
         from .envs.grid_env import MarioGridEnv
 
         self.visited.append("watch_" + meta["name"])
-        agent = load_agent(meta)
+        try:
+            agent = load_agent(meta)
+        except ImportError:             # DQN sans PyTorch installé
+            self._show_message(["PYTORCH MANQUANT", "PIP INSTALL -R",
+                                "REQUIREMENTS-DQN.TXT"])
+            return
         policy = agent.greedy_policy(meta.get("seed", 0))
         env = MarioGridEnv(level=meta["level"],
                            max_steps=meta.get("max_steps", 1000),

@@ -24,7 +24,22 @@ from .montecarlo import MonteCarloAgent
 AGENT_CLASSES = {"qlearning": QLearningAgent, "sarsa": SarsaAgent,
                  "montecarlo": MonteCarloAgent}
 ALGO_NAMES = {"qlearning": "Q-Learning", "sarsa": "SARSA",
-              "montecarlo": "Monte Carlo"}
+              "montecarlo": "Monte Carlo", "dqn": "DQN"}
+
+
+def agent_class(algo):
+    """Classe de l'agent ; DQN n'est importé que si on s'en sert (PyTorch)."""
+    if algo == "dqn":
+        from .dqn import DQNAgent
+        return DQNAgent
+    if algo not in AGENT_CLASSES:
+        raise ValueError(f"algorithme inconnu : {algo!r}")
+    return AGENT_CLASSES[algo]
+
+
+def table_size(agent):
+    """États dans la Q-table (tableaux) ou pas en mémoire de replay (DQN)."""
+    return len(agent.q) if hasattr(agent, "q") else agent.memory.size
 
 # Ce qu'on note à la fin de chaque épisode (une colonne de history.csv chacun)
 HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
@@ -35,7 +50,7 @@ HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
 @dataclass
 class TrainConfig:
     """Tous les réglages d'un entraînement (valeurs par défaut = article)."""
-    algo: str = "qlearning"        # "qlearning", "sarsa" ou "montecarlo"
+    algo: str = "qlearning"        # "qlearning", "sarsa", "montecarlo", "dqn"
     level: str = "v1"
     episodes: int = 3000
     seed: int = 42
@@ -130,6 +145,25 @@ def play_montecarlo_episode(env, agent, epsilon):
     return _summary(info, total, max_col, truncated)
 
 
+def play_dqn_episode(env, agent, epsilon):
+    """Un épisode DQN : chaque pas va dans la mémoire de replay, et le réseau
+    apprend sur un paquet de souvenirs tous les 4 pas (voir dqn.py)."""
+    obs, info = env.reset()
+    total = 0.0
+    max_col = info["col"]
+    while True:
+        a = agent.act(obs, epsilon)
+        obs2, r, terminated, truncated, info = env.step(a)
+        agent.observe(obs, a, r, obs2, terminated)
+        total += r
+        if info["col"] > max_col:
+            max_col = info["col"]
+        if terminated or truncated:
+            break
+        obs = obs2
+    return _summary(info, total, max_col, truncated)
+
+
 def _summary(info, total, max_col, truncated):
     st = info["stats"]
     return {"return": total, "win": int(info["win"]), "dead": int(info["dead"]),
@@ -152,12 +186,16 @@ def train(cfg: TrainConfig, log=print):
 
     Renvoie (agent, historique, tests gloutons, test final, durée en s).
     """
-    if cfg.algo not in AGENT_CLASSES:
-        raise ValueError(f"algorithme inconnu : {cfg.algo!r}")
+    cls = agent_class(cfg.algo)
     env = make_env(cfg)
     env.reset(seed=cfg.seed)
-    agent = AGENT_CLASSES[cfg.algo](env.action_space.n, cfg.alpha, cfg.gamma,
-                                    cfg.seed)
+    if cfg.algo == "dqn":
+        import torch
+        torch.set_num_threads(1)        # petit réseau : 1 cœur suffit
+        agent = cls(env.observation_space.nvec - 1, env.action_space.n,
+                    cfg.gamma, cfg.seed)
+    else:
+        agent = cls(env.action_space.n, cfg.alpha, cfg.gamma, cfg.seed)
     history = {k: [] for k in HISTORY_FIELDS}
     tests = []
     eps = cfg.eps_start
@@ -169,10 +207,12 @@ def train(cfg: TrainConfig, log=print):
             res = play_sarsa_episode(env, agent, eps)
         elif cfg.algo == "montecarlo":
             res = play_montecarlo_episode(env, agent, eps)
+        elif cfg.algo == "dqn":
+            res = play_dqn_episode(env, agent, eps)
         else:
             res = play_episode(env, lambda s: agent.act(s, eps), agent.update)
         res["epsilon"] = eps
-        res["n_states"] = len(agent.q)
+        res["n_states"] = table_size(agent)
         for k in HISTORY_FIELDS:
             history[k].append(res[k])
 
@@ -188,7 +228,8 @@ def train(cfg: TrainConfig, log=print):
             log(f"[graine {cfg.seed}] épisode {ep:>6}/{cfg.episodes} | "
                 f"ε={history['epsilon'][-1]:.3f} | victoires (100 dern.) "
                 f"{wins:6.1%} | retour moyen {ret:7.1f} | "
-                f"états vus {len(agent.q):>7} | "
+                f"{'mémoire' if cfg.algo == 'dqn' else 'états vus'} "
+                f"{table_size(agent):>7} | "
                 f"{time.perf_counter() - t0:6.1f} s")
 
     final = greedy_test(env, agent, cfg.seed)

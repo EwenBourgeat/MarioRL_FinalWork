@@ -165,3 +165,26 @@ def test_montecarlo_training_save_load(tmp_path):
     back = load_agent(path)
     assert isinstance(back, MonteCarloAgent)
     assert back.q == a1.q and back.n == a1.n
+
+
+def test_dqn_learns_target_and_saves(tmp_path):
+    pytest.importorskip("torch")
+    from agents.dqn import DQNAgent
+    from agents.training import train
+
+    # petit entraînement (v1, peu d'épisodes) : il doit tourner, être
+    # reproductible et se recharger à l'identique
+    cfg = TrainConfig(algo="dqn", level="v1", episodes=30, seed=1,
+                      eval_every=0, log_every=0, alpha=None, eps_min=0.05)
+    a1, h1, _, g1, _ = train(cfg, log=None)
+    a2, h2, _, g2, _ = train(cfg, log=None)
+    assert isinstance(a1, DQNAgent) and h1 == h2 and g1 == g2
+    assert a1.updates > 0                       # le réseau a appris
+    meta = dict(cfg.as_dict(), metrics=article_metrics(h1), greedy=g1)
+    path = save_model(a1, meta, h1, [], root=tmp_path)
+    assert (path / "dqn.pt").exists()
+    (model,) = list_models(tmp_path)
+    back = load_agent(model)
+    obs = make_env(cfg).reset()[0]
+    assert np.allclose(back.q_values(obs), a1.q_values(obs))
+    assert greedy_test(make_env(cfg), back, cfg.seed) == g1

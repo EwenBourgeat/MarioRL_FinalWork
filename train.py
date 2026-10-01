@@ -19,13 +19,13 @@ from concurrent.futures import ProcessPoolExecutor
 from agents.metrics import (article_metrics, format_metrics, format_summary,
                             plot_curves)
 from agents.registry import save_model
-from agents.training import AGENT_CLASSES, ALGO_NAMES, TrainConfig, run_seed
+from agents.training import ALGO_NAMES, TrainConfig, run_seed
 
 
 def build_parser():
     d = TrainConfig()
     p = argparse.ArgumentParser(description="Q-Learning / SARSA / Monte Carlo sur MarioGrid")
-    p.add_argument("--algo", choices=sorted(AGENT_CLASSES), default=d.algo,
+    p.add_argument("--algo", choices=sorted(ALGO_NAMES), default=d.algo,
                    help="algorithme (défaut : qlearning)")
     p.add_argument("--level", choices=["v1", "v2", "v3"], default=d.level)
     p.add_argument("--episodes", type=int, default=d.episodes)
@@ -39,7 +39,8 @@ def build_parser():
     p.add_argument("--eps-decay", type=float, default=d.eps_decay,
                    help="epsilon est multiplié par ce nombre après chaque "
                         "épisode")
-    p.add_argument("--eps-min", type=float, default=d.eps_min)
+    p.add_argument("--eps-min", type=float, default=None,
+                   help="plancher de epsilon (défaut : 0.01, 0.05 pour DQN)")
     p.add_argument("--max-steps", type=int, default=d.max_steps,
                    help="limite de pas par épisode")
     p.add_argument("--eval-every", type=int, default=d.eval_every,
@@ -60,6 +61,8 @@ def build_parser():
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
+    if args.eps_min is None:
+        args.eps_min = 0.05 if args.algo == "dqn" else 0.01
     configs = [TrainConfig(algo=args.algo, level=args.level,
                            episodes=args.episodes, seed=s,
                            alpha=args.alpha, gamma=args.gamma,
@@ -72,7 +75,11 @@ def main(argv=None):
         # Monte Carlo n'a pas d'alpha : chaque note est une moyenne (1/N)
         for c in configs:
             c["alpha"] = None
-    alpha_txt = "1/N" if args.algo == "montecarlo" else args.alpha
+    alpha_txt = {"montecarlo": "1/N", "dqn": "lr 0.0001 (Adam)"}.get(
+        args.algo, args.alpha)
+    if args.algo == "dqn":
+        for c in configs:
+            c["alpha"] = None
     print(f"{ALGO_NAMES[args.algo]} | MarioGrid {args.level} | "
           f"{args.episodes} épisodes | "
           f"graines {', '.join(map(str, args.seeds))} | alpha={alpha_txt} "
@@ -92,7 +99,7 @@ def main(argv=None):
         all_metrics.append(m)
         print()
         print(f"=== graine {cfg['seed']} ({seconds:.1f} s) ===")
-        print(format_metrics(m, cfg["level"], final))
+        print(format_metrics(m, cfg["level"], final, cfg["algo"]))
         if args.no_save:
             continue
         meta = dict(cfg, env="MarioGrid-v0",
