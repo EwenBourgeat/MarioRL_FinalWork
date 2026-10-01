@@ -18,10 +18,13 @@ from mario_env import MarioGridEnv, state_key
 
 from .qlearning import QLearningAgent
 from .sarsa import SarsaAgent
+from .montecarlo import MonteCarloAgent
 
 # Algorithmes disponibles : nom -> classe de l'agent
-AGENT_CLASSES = {"qlearning": QLearningAgent, "sarsa": SarsaAgent}
-ALGO_NAMES = {"qlearning": "Q-Learning", "sarsa": "SARSA"}
+AGENT_CLASSES = {"qlearning": QLearningAgent, "sarsa": SarsaAgent,
+                 "montecarlo": MonteCarloAgent}
+ALGO_NAMES = {"qlearning": "Q-Learning", "sarsa": "SARSA",
+              "montecarlo": "Monte Carlo"}
 
 # Ce qu'on note à la fin de chaque épisode (une colonne de history.csv chacun)
 HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
@@ -32,7 +35,7 @@ HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
 @dataclass
 class TrainConfig:
     """Tous les réglages d'un entraînement (valeurs par défaut = article)."""
-    algo: str = "qlearning"        # "qlearning" ou "sarsa"
+    algo: str = "qlearning"        # "qlearning", "sarsa" ou "montecarlo"
     level: str = "v1"
     episodes: int = 3000
     seed: int = 42
@@ -105,6 +108,28 @@ def play_sarsa_episode(env, agent, epsilon):
     return _summary(info, total, max_col, truncated)
 
 
+def play_montecarlo_episode(env, agent, epsilon):
+    """Un épisode Monte Carlo : on joue toute la partie en notant
+    (situation, bouton, récompense), puis on apprend une seule fois à la fin."""
+    obs, info = env.reset()
+    s = state_key(obs)
+    trajectory = []
+    total = 0.0
+    max_col = info["col"]
+    while True:
+        a = agent.act(s, epsilon)
+        obs, r, terminated, truncated, info = env.step(a)
+        trajectory.append((s, a, r))
+        total += r
+        if info["col"] > max_col:
+            max_col = info["col"]
+        if terminated or truncated:
+            break
+        s = state_key(obs)
+    agent.update_episode(trajectory)
+    return _summary(info, total, max_col, truncated)
+
+
 def _summary(info, total, max_col, truncated):
     st = info["stats"]
     return {"return": total, "win": int(info["win"]), "dead": int(info["dead"]),
@@ -123,7 +148,7 @@ def greedy_test(env, agent, seed=0):
 
 
 def train(cfg: TrainConfig, log=print):
-    """Entraîne un agent (Q-Learning ou SARSA selon ``cfg.algo``).
+    """Entraîne un agent (Q-Learning, SARSA ou Monte Carlo selon ``cfg.algo``).
 
     Renvoie (agent, historique, tests gloutons, test final, durée en s).
     """
@@ -142,6 +167,8 @@ def train(cfg: TrainConfig, log=print):
         # --- une partie d'entraînement : epsilon-greedy + mise à jour ---
         if cfg.algo == "sarsa":
             res = play_sarsa_episode(env, agent, eps)
+        elif cfg.algo == "montecarlo":
+            res = play_montecarlo_episode(env, agent, eps)
         else:
             res = play_episode(env, lambda s: agent.act(s, eps), agent.update)
         res["epsilon"] = eps
@@ -183,4 +210,4 @@ def run_seed(cfg_dict):
     cfg = TrainConfig(**cfg_dict)
     agent, history, tests, final, seconds = train(
         cfg, log=lambda msg: print(msg, flush=True))
-    return cfg_dict, agent.q, history, tests, final, seconds
+    return cfg_dict, agent, history, tests, final, seconds

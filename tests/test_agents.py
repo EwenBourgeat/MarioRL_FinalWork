@@ -133,3 +133,35 @@ def test_unknown_algorithm_is_refused():
 
     with pytest.raises(ValueError):
         train(TrainConfig(algo="nope", episodes=1), log=None)
+
+
+def test_montecarlo_first_visit_average():
+    from agents.montecarlo import MonteCarloAgent
+
+    agent = MonteCarloAgent(3, gamma=0.5, seed=0)
+    A, B = (1,), (2,)
+    # partie : A/droite (+1) -> B/saut (0) -> A/droite (+4, fin)
+    agent.update_episode([(A, 1, 1.0), (B, 2, 0.0), (A, 1, 4.0)])
+    # G depuis la fin : 4 ; 0 + 0.5*4 = 2 ; 1 + 0.5*2 = 2
+    assert agent.q[B][2] == pytest.approx(2.0)
+    assert agent.q[A][1] == pytest.approx(2.0)      # première visite seulement
+    assert agent.n[A][1] == 1 and agent.n[B][2] == 1
+    # deuxième partie : A/droite rapporte 10 -> moyenne (2 + 10) / 2 = 6
+    agent.update_episode([(A, 1, 10.0)])
+    assert agent.q[A][1] == pytest.approx(6.0) and agent.n[A][1] == 2
+
+
+def test_montecarlo_training_save_load(tmp_path):
+    from agents.montecarlo import MonteCarloAgent
+    from agents.training import train
+
+    cfg = TrainConfig(algo="montecarlo", level="v1", episodes=200, seed=4,
+                      eval_every=0, log_every=0, alpha=None)
+    a1, h1, _, g1, _ = train(cfg, log=None)
+    a2, h2, _, _, _ = train(cfg, log=None)
+    assert h1 == h2 and a1.q == a2.q and a1.n == a2.n
+    meta = dict(cfg.as_dict(), metrics=article_metrics(h1), greedy=g1)
+    path = save_model(a1, meta, h1, [], root=tmp_path)
+    back = load_agent(path)
+    assert isinstance(back, MonteCarloAgent)
+    assert back.q == a1.q and back.n == a1.n

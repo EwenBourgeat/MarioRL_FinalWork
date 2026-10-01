@@ -40,7 +40,7 @@ Dépendances : `numpy`, `gymnasium`, `pygame-ce` (affichage/clavier seulement),
 `matplotlib` (courbes d'apprentissage), `pytest` (tests). Le moteur et les environnements fonctionnent **sans pygame**
 (mode sans affichage pour l'entraînement).
 
-Vérification : `python -m pytest` (73 tests, quelques secondes).
+Vérification : `python -m pytest` (75 tests, quelques secondes).
 
 ---
 
@@ -333,7 +333,7 @@ d'un run de l'article (v3) demandent de l'ordre d'une minute de simulation avec
 
 ---
 
-## 7. Nos agents : Q-Learning et SARSA
+## 7. Nos agents : Q-Learning, SARSA et Monte Carlo
 
 ### Lancer un entraînement
 
@@ -341,6 +341,7 @@ d'un run de l'article (v3) demandent de l'ordre d'une minute de simulation avec
 python train.py --algo qlearning --level v1 --episodes 10000 --seeds 42
 python train.py --algo sarsa --level v1 --episodes 6000 --seeds 42
 python train.py --algo sarsa --level v3 --episodes 10000 --seeds 42 43 44 45 46
+python train.py --algo montecarlo --level v3 --episodes 6000 --seeds 42
 python train.py --help        # tous les réglages
 ```
 
@@ -353,7 +354,12 @@ la cible de la mise à jour change :
   bouton dans la situation suivante (il suppose qu'il jouera parfaitement) ;
 * **SARSA** (`agents/sarsa.py`) : cible = r + γ × note du bouton qu'il va
   *vraiment* jouer ensuite, hasard compris. Il tient donc compte de ses
-  propres erreurs d'exploration et apprend des chemins plus prudents.
+  propres erreurs d'exploration et apprend des chemins plus prudents ;
+* **Monte Carlo** (`agents/montecarlo.py`) : ne corrige rien pendant la
+  partie ; à la fin, chaque choix reçoit les points obtenus depuis ce choix
+  jusqu'à la fin (G), et sa note devient la moyenne de tous ses G (1/N au lieu
+  de α, « première visite » comme l'article). Pas de deep learning : c'est
+  aussi un tableau.
 
 Réglages par défaut = ceux de l'article (section 2.2), identiques pour les
 deux : α = 0,1 ; γ = 0,99 ;
@@ -402,10 +408,11 @@ glouton final.
 | SARSA | v1 | 6 000 | 100,0 % | 197,4 | 767 | 1132 | gagné, 223 pas |
 | SARSA | v2 | 6 000 | 100,0 % | 212,2 | 907 | 1304 | gagné, 229 pas |
 | SARSA | v3 | 6 000 | 95,6 % | 250,9 | 2812 | 3416 | gagné, 272 pas |
+| Monte Carlo | v3 | 6 000 | 96,8 % | 248,5 | 2725 | 3598 | gagné, 473 pas |
 
 Article (5 graines, 10 000 épisodes) : Q-Learning v1 98,8 % / 191,7 / 1345 /
 2122 ; v2 98,9 % / 205,5 / 1241 / 1964 ; v3 86,5 % / 173,3 / 3157 / 4029 ;
-SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446. Une seule graine pour l'instant :
+SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446 ; Monte Carlo v3 94,9 % / 173,9 / 2816 / 3493. Une seule graine pour l'instant :
 pas encore d'écart-type.
 
 ![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
@@ -440,11 +447,12 @@ mario_env/
 agents/
   qlearning.py     agent Q-Learning (Q-table, epsilon-greedy, mise à jour)
   sarsa.py         agent SARSA (même Q-table, autre mise à jour)
+  montecarlo.py    agent Monte Carlo (mise à jour en fin de partie, 1/N)
   training.py      boucle d'entraînement et test glouton
   metrics.py       mesures de l'article et courbes
   registry.py      sauvegarde / liste des modèles (dossier models/)
 models/            modèles entraînés (lus par le menu MODELES)
-train.py           lancer un entraînement (--algo qlearning ou sarsa)
+train.py           lancer un entraînement (--algo qlearning, sarsa ou montecarlo)
 train_qlearning.py raccourci pour train.py --algo qlearning
 scripts/           benchmark.py, export_images.py (figures pour le rapport)
 tests/             tests automatiques (pytest)

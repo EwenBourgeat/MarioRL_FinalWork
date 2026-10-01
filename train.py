@@ -1,4 +1,4 @@
-"""Entraîne un agent tabulaire (Q-Learning ou SARSA) sur MarioGrid.
+"""Entraîne un agent tabulaire (Q-Learning, SARSA ou Monte Carlo) sur MarioGrid.
 
 Exemples :
     python train.py --algo qlearning --level v1 --episodes 3000 --seeds 42
@@ -24,7 +24,7 @@ from agents.training import AGENT_CLASSES, ALGO_NAMES, TrainConfig, run_seed
 
 def build_parser():
     d = TrainConfig()
-    p = argparse.ArgumentParser(description="Q-Learning / SARSA sur MarioGrid")
+    p = argparse.ArgumentParser(description="Q-Learning / SARSA / Monte Carlo sur MarioGrid")
     p.add_argument("--algo", choices=sorted(AGENT_CLASSES), default=d.algo,
                    help="algorithme (défaut : qlearning)")
     p.add_argument("--level", choices=["v1", "v2", "v3"], default=d.level)
@@ -68,9 +68,14 @@ def main(argv=None):
                            eval_every=args.eval_every, segments=args.segments,
                            log_every=args.log_every).as_dict()
                for s in args.seeds]
+    if args.algo == "montecarlo":
+        # Monte Carlo n'a pas d'alpha : chaque note est une moyenne (1/N)
+        for c in configs:
+            c["alpha"] = None
+    alpha_txt = "1/N" if args.algo == "montecarlo" else args.alpha
     print(f"{ALGO_NAMES[args.algo]} | MarioGrid {args.level} | "
           f"{args.episodes} épisodes | "
-          f"graines {', '.join(map(str, args.seeds))} | alpha={args.alpha} "
+          f"graines {', '.join(map(str, args.seeds))} | alpha={alpha_txt} "
           f"gamma={args.gamma} | ε {args.eps_start} -> x{args.eps_decay} "
           f"-> {args.eps_min}", flush=True)
     t0 = time.perf_counter()
@@ -82,7 +87,7 @@ def main(argv=None):
             results = list(pool.map(run_seed, configs))
 
     all_metrics = []
-    for cfg, q, history, tests, final, seconds in results:
+    for cfg, agent, history, tests, final, seconds in results:
         m = article_metrics(history)
         all_metrics.append(m)
         print()
@@ -90,9 +95,6 @@ def main(argv=None):
         print(format_metrics(m, cfg["level"], final))
         if args.no_save:
             continue
-        agent = AGENT_CLASSES[cfg["algo"]](3, cfg["alpha"], cfg["gamma"],
-                                           cfg["seed"])
-        agent.q = q
         meta = dict(cfg, env="MarioGrid-v0",
                     reward="paper", metrics=m, greedy=final,
                     train_seconds=round(seconds, 2))
