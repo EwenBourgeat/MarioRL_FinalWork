@@ -401,10 +401,11 @@ glouton final.
 | Q-Learning | v3 | 10 000 | 93,0 % | 241,0 | 2808 | 3468 | gagné, 275 pas |
 | SARSA | v1 | 6 000 | 100,0 % | 197,4 | 767 | 1132 | gagné, 223 pas |
 | SARSA | v2 | 6 000 | 100,0 % | 212,2 | 907 | 1304 | gagné, 229 pas |
+| SARSA | v3 | 6 000 | 95,6 % | 250,9 | 2812 | 3416 | gagné, 272 pas |
 
 Article (5 graines, 10 000 épisodes) : Q-Learning v1 98,8 % / 191,7 / 1345 /
 2122 ; v2 98,9 % / 205,5 / 1241 / 1964 ; v3 86,5 % / 173,3 / 3157 / 4029 ;
-SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645. Une seule graine pour l'instant :
+SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446. Une seule graine pour l'instant :
 pas encore d'écart-type.
 
 ![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
