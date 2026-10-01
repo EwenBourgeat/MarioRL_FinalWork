@@ -415,14 +415,17 @@ class App:
             lines.append(f"TEST GLOUTON {res} {g.get('steps', 0)} PAS")
         return lines
 
-    def run_models(self):
-        self.visited.append("models")
-        models = self.load_models()
+    def _list_menu(self, title, labels, info_for, on_start):
+        """Liste NES (curseur champignon) terminée par RETOUR.
+
+        ``info_for(i)`` : lignes d'infos de la ligne i ; ``on_start(i)`` :
+        action sur Entrée.  Revient à l'appelant sur RETOUR ou Échap.
+        """
+        labels = list(labels) + ["RETOUR"]
+        n = len(labels)
         cursor = 0
         first = 0
         while self._tick():
-            labels = [m["label"] for m in models] + ["RETOUR"]
-            n = len(labels)
             for a in self._actions():
                 if a in ("down", "select"):
                     cursor = (cursor + 1) % n
@@ -431,7 +434,7 @@ class App:
                 elif a == "start":
                     if cursor == n - 1:
                         return
-                    self.run_watch(models[cursor])
+                    on_start(cursor)
                     break
                 elif a == "back":
                     return
@@ -439,15 +442,47 @@ class App:
                 return
             # défilement : la ligne du curseur reste visible
             first = min(max(first, cursor - MODELS_VISIBLE + 1), cursor)
-            if cursor < len(models):
-                info = self.model_info(models[cursor])
-            elif not models:
-                info = ["AUCUN MODELE ENTRAINE", "PYTHON TRAIN_QLEARNING.PY"]
-            else:
-                info = []
+            info = info_for(cursor) if cursor < n - 1 else []
             frame = self.title_renderer.render_model_list(
-                labels, cursor, info, first, fc=self.frames)
+                labels, cursor, info, first, fc=self.frames, title=title)
             self._present(frame)
+
+    def run_models(self):
+        """MODELES : d'abord l'algorithme, puis ses modèles entraînés."""
+        self.visited.append("models")
+        try:
+            from agents.registry import ALGORITHMS
+        except ImportError:
+            ALGORITHMS = ()
+        models = self.load_models()
+        models.sort(key=lambda m: (m.get("level", ""), m.get("episodes", 0),
+                                   m.get("seed", 0), m.get("name", "")))
+        by_algo = {key: [m for m in models if m.get("algo") == key]
+                   for key, _ in ALGORITHMS}
+
+        def info_for(i):
+            k = len(by_algo[ALGORITHMS[i][0]])
+            if k == 0:
+                return ["PAS ENCORE DE MODELE"]
+            return [f"{k} MODELE{'S' if k > 1 else ''} ENTRAINE"
+                    f"{'S' if k > 1 else ''}"]
+
+        def on_start(i):
+            key, name = ALGORITHMS[i]
+            if by_algo[key]:
+                self.run_model_list(name, by_algo[key])
+
+        self._list_menu("MODELES", [name for _, name in ALGORITHMS],
+                        info_for, on_start)
+
+    def run_model_list(self, title, models):
+        """Les modèles d'un algorithme ; Entrée pour le regarder jouer."""
+        from agents.registry import short_label
+
+        self.visited.append("models_" + title)
+        self._list_menu(title, [short_label(m) for m in models],
+                        lambda i: self.model_info(models[i]),
+                        lambda i: self.run_watch(models[i]))
 
     def run_watch(self, meta):
         """Le modèle joue seul, sans exploration (comme le test glouton)."""

@@ -71,8 +71,9 @@ d'origine (1 / 2 PLAYER GAME) sont remplacées par :
 * **VERSION NES** : le vrai jeu ;
 * **VERSION SIMPLIFIEE V3** : l'environnement discret de l'article, jouable
   (← → sur cette ligne pour choisir V1, V2 ou V3) ;
-* **MODELES** : la liste des agents entraînés (dossier `models/`) ; Entrée
-  sur un modèle pour le **regarder jouer en direct** (section 7) ;
+* **MODELES** : les algorithmes (Q-Learning, SARSA, Monte Carlo, DQN), puis
+  les agents entraînés de chacun (dossier `models/`) ; Entrée sur un modèle
+  pour le **regarder jouer en direct** (section 7) ;
 * **QUITTER**.
 
 Comme sur la NES, **SELECT** (Tab, ou ↑ / ↓) déplace le champignon et
@@ -370,7 +371,8 @@ l'agent a réellement retenu, sans le bruit de l'exploration.
 
 ### Regarder un modèle jouer
 
-`python play.py` → **MODELES** → Entrée sur un modèle. L'agent joue sa
+`python play.py` → **MODELES** → choisir l'algorithme (Q-LEARNING, SARSA,
+MONTE CARLO, DQN) → Entrée sur un modèle. L'agent joue sa
 politique gloutonne (ε = 0) à 7,5 pas/s ; **→ / ←** accélère / ralentit
 (x1, x2, x4, x8), **Échap** revient à la liste. En fin de partie, retour
 automatique à la liste. La partie affichée est exactement celle du test

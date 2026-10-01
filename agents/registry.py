@@ -24,6 +24,19 @@ def models_dir(path=None):
     return Path(path or os.environ.get("MARIO_MODELS_DIR") or MODELS_DIR)
 
 
+# Algorithmes du projet, dans l'ordre du menu MODELES (nom interne, affiché)
+ALGORITHMS = (("qlearning", "Q-LEARNING"), ("sarsa", "SARSA"),
+              ("montecarlo", "MONTE CARLO"), ("dqn", "DQN"))
+
+
+def short_label(meta):
+    """Nom affiché dans la liste d'un algorithme (sans l'algorithme)."""
+    s = f"{meta['level']} graine {meta['seed']} {meta['episodes']} ep".upper()
+    if meta.get("segments"):
+        s += " " + meta["segments"].upper()
+    return s
+
+
 def default_name(algo, level, seed, episodes, segments=None):
     name = f"{algo}_{level}_s{seed}_{episodes}ep"
     if segments:

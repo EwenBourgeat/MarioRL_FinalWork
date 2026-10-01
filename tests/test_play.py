@@ -107,25 +107,29 @@ def test_models_menu_watch_agent(tmp_path, monkeypatch):
     monkeypatch.setenv("MARIO_MODELS_DIR", str(tmp_path))
     script = {
         5: [k.K_UP, k.K_UP],        # VERSION NES -> QUITTER -> MODELES
-        6: [k.K_RETURN],            # liste des modèles
-        8: [k.K_RETURN],            # le premier modèle joue
-        10: [k.K_RETURN],           # passer l'écran WORLD 1-1
-        12: [k.K_RIGHT, k.K_RIGHT, k.K_RIGHT],     # vitesse x8
+        6: [k.K_RETURN],            # liste des algorithmes
+        8: [k.K_RETURN],            # Q-LEARNING : liste de ses modèles
+        10: [k.K_RETURN],           # le premier modèle joue
+        12: [k.K_RETURN],           # passer l'écran WORLD 1-1
+        14: [k.K_RIGHT, k.K_RIGHT, k.K_RIGHT],     # vitesse x8
     }
     app = make_app(script, max_frames=1400)
     app.run_title()
     expected = ("THANK YOU MARIO!" if final["win"] else
                 "GAME OVER" if final["dead"] else "TIME UP")
-    assert app.visited[:3] == ["models", "watch_" + path.name, expected]
+    assert app.visited[:4] == ["models", "models_Q-LEARNING",
+                               "watch_" + path.name, expected]
     # après la fin de partie : retour à la liste des modèles (panneau brun)
     assert tuple(app.last_frame[120, 30]) == (0xC8, 0x4C, 0x0C)
 
 
-def test_models_menu_empty(tmp_path, monkeypatch):
+def test_models_menu_algorithms_without_models(tmp_path, monkeypatch):
     k = pygame
     monkeypatch.setenv("MARIO_MODELS_DIR", str(tmp_path / "vide"))
-    script = {5: [k.K_UP, k.K_UP], 6: [k.K_RETURN], 8: [k.K_RETURN],
-              10: [k.K_ESCAPE]}
+    script = {5: [k.K_UP, k.K_UP], 6: [k.K_RETURN],
+              8: [k.K_DOWN], 9: [k.K_RETURN],      # SARSA : rien à ouvrir
+              11: [k.K_ESCAPE],                    # retour à l'écran titre
+              13: [k.K_ESCAPE]}
     app = make_app(script)
     app.run_title()
     assert app.visited == ["models"] and app.closed

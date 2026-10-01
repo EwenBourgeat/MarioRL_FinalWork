@@ -445,7 +445,7 @@ class Renderer:
         return frame
 
     def render_model_list(self, labels, cursor, info=(), first=0,
-                          visible=MODELS_VISIBLE, fc=0):
+                          visible=MODELS_VISIBLE, fc=0, title="MODELES"):
         """Menu MODELES : panneau du titre agrandi avec la liste des modèles.
 
         ``labels`` : textes des lignes (la dernière est « RETOUR ») ;
@@ -462,7 +462,7 @@ class Renderer:
         frame[y0 + 2:y1 - 2, x0 + 2:x1 - 2] = NES_PALETTE[0x17]
         frame[y1 - 3:y1 - 1, x0 + 2:x1 - 1] = NES_PALETTE[0x0F]
         frame[y0 + 2:y1 - 1, x1 - 3:x1 - 1] = NES_PALETTE[0x0F]
-        text(frame, "MODELES", 128 - 4 * 7, y0 + 10)
+        text(frame, title, 128 - 4 * len(title), y0 + 10)
         for row, i in enumerate(range(first, min(first + visible,
                                                   len(labels)))):
             y = MODELS_LIST_Y + 16 * row
