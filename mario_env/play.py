@@ -5,8 +5,10 @@
 Le jeu s'ouvre sur l'écran titre de Super Mario Bros. :
     VERSION NES              le vrai jeu (physique NES)
     VERSION SIMPLIFIEE V3    l'environnement discret de l'article (← → : V1/V2/V3)
+    MODELES                  regarder jouer un agent entraîné (dossier models/)
     QUITTER
 ↑ / ↓ ou Tab (SELECT) pour déplacer le champignon, Entrée (START) pour valider.
+Pendant qu'un modèle joue : → / ← pour accélérer / ralentir (x1 à x8).
 
 En jeu : flèches (ou ZQSD / WASD) pour bouger, X / K / Espace = saut (A),
 C / J / Z / Maj = courir / boule de feu (B), Entrée = pause,
@@ -21,14 +23,15 @@ import numpy as np
 
 from . import constants as C
 from .game import Game, GameConfig
-from .renderer import Renderer, text
+from .renderer import MODELS_VISIBLE, Renderer, text
 
 INTERMISSION_FRAMES = 150
 GAMEOVER_FRAMES = 240
 GRID_STEP_FRAMES = 8            # un pas de l'environnement simplifié = 8 images
 GRID_END_FRAMES = 180
 GRID_LEVELS = ("v1", "v2", "v3")
-MENU_NES, MENU_GRID, MENU_QUIT = range(3)
+MENU_NES, MENU_GRID, MENU_MODELS, MENU_QUIT = range(4)
+WATCH_SPEEDS = (1, 2, 4, 8)     # vitesses du menu MODELES (x1 = 7,5 pas/s)
 
 # Manettes : SELECT / START selon les modèles (Xbox, génériques USB)
 JOY_SELECT = (6, 8)
@@ -201,16 +204,18 @@ class App:
     def menu_labels(self):
         return ["VERSION NES",
                 f"VERSION SIMPLIFIEE {self.grid_level.upper()}",
+                "MODELES",
                 "QUITTER"]
 
     def run_title(self):
         cursor = MENU_NES
+        n = len(self.menu_labels())
         while self._tick():
             for a in self._actions():
                 if a in ("down", "select"):
-                    cursor = (cursor + 1) % 3
+                    cursor = (cursor + 1) % n
                 elif a == "up":
-                    cursor = (cursor - 1) % 3
+                    cursor = (cursor - 1) % n
                 elif a in ("left", "right") and cursor == MENU_GRID:
                     i = GRID_LEVELS.index(self.grid_level)
                     i = (i + (1 if a == "right" else -1)) % len(GRID_LEVELS)
@@ -220,6 +225,8 @@ class App:
                         self.run_nes()
                     elif cursor == MENU_GRID:
                         self.run_grid(self.grid_level)
+                    elif cursor == MENU_MODELS:
+                        self.run_models()
                     else:
                         self.closed = True
                     break
@@ -304,7 +311,7 @@ class App:
     # ------------------------------------------------------------------
     # Version simplifiée (environnement de l'article)
     # ------------------------------------------------------------------
-    def grid_frame(self, env, ret, message=None):
+    def grid_frame(self, env, ret, message=None, ai=None):
         frame = np.empty((C.SCREEN_H, C.SCREEN_W, 3), dtype=np.uint8)
         frame[:] = C.NES_PALETTE[C.SKY_COLOR]
         cam = min(max(env.col - 7, 0), env.W - 16)
@@ -315,6 +322,10 @@ class App:
         text(frame, env.level.upper(), 152, 24)
         text(frame, "PAS", 208, 16)
         text(frame, f"{env.t:03d}", 208, 24)
+        if ai:                                  # (nom du modèle, vitesse)
+            label, speed = ai
+            text(frame, label[:22], 24, 40)
+            text(frame, f"x{speed}", 216, 40)
         if message:
             text(frame, message, 128 - 4 * len(message), 88)
         return frame
@@ -375,6 +386,127 @@ class App:
                 if phase_timer <= 0 or "start" in actions:
                     break
             self._present(self.grid_frame(env, ret, message))
+
+    # ------------------------------------------------------------------
+    # Menu MODELES : regarder jouer un agent entraîné
+    # ------------------------------------------------------------------
+    @staticmethod
+    def load_models():
+        try:
+            from agents.registry import list_models
+        except ImportError:             # dossier agents/ absent
+            return []
+        return list_models()
+
+    @staticmethod
+    def model_info(meta):
+        """Résumé sous la liste (mesures de l'article + test glouton)."""
+        lines = []
+        m = meta.get("metrics")
+        if m:
+            lines.append(f"VICTOIRES {100 * m['win_rate']:.1f}% "
+                         f"RETOUR {m['avg_return']:.0f}")
+            to = [("-" if m.get(k) is None else m[k]) for k in ("to_50",
+                                                               "to_80")]
+            lines.append(f"50% EP {to[0]}  80% EP {to[1]}")
+        g = meta.get("greedy")
+        if g:
+            res = "GAGNE" if g.get("win") else "PERDU"
+            lines.append(f"TEST GLOUTON {res} {g.get('steps', 0)} PAS")
+        return lines
+
+    def run_models(self):
+        self.visited.append("models")
+        models = self.load_models()
+        cursor = 0
+        first = 0
+        while self._tick():
+            labels = [m["label"] for m in models] + ["RETOUR"]
+            n = len(labels)
+            for a in self._actions():
+                if a in ("down", "select"):
+                    cursor = (cursor + 1) % n
+                elif a == "up":
+                    cursor = (cursor - 1) % n
+                elif a == "start":
+                    if cursor == n - 1:
+                        return
+                    self.run_watch(models[cursor])
+                    break
+                elif a == "back":
+                    return
+            if self.closed:
+                return
+            # défilement : la ligne du curseur reste visible
+            first = min(max(first, cursor - MODELS_VISIBLE + 1), cursor)
+            if cursor < len(models):
+                info = self.model_info(models[cursor])
+            elif not models:
+                info = ["AUCUN MODELE ENTRAINE", "PYTHON TRAIN_QLEARNING.PY"]
+            else:
+                info = []
+            frame = self.title_renderer.render_model_list(
+                labels, cursor, info, first, fc=self.frames)
+            self._present(frame)
+
+    def run_watch(self, meta):
+        """Le modèle joue seul, sans exploration (comme le test glouton)."""
+        from agents.registry import load_agent
+        from .envs.common import state_key
+        from .envs.grid_env import MarioGridEnv
+
+        self.visited.append("watch_" + meta["name"])
+        agent = load_agent(meta)
+        policy = agent.greedy_policy(meta.get("seed", 0))
+        env = MarioGridEnv(level=meta["level"],
+                           max_steps=meta.get("max_steps", 1000),
+                           segment_order=meta.get("segments"))
+        obs, _ = env.reset()
+        label = meta.get("label", meta["name"]).upper()
+        ret = 0.0
+        speed = 0
+        phase = "intermission"
+        phase_timer = INTERMISSION_FRAMES
+        message = None
+        step_timer = 0
+        while self._tick():
+            actions = self._actions()
+            if "back" in actions or self.closed:
+                break
+            if "right" in actions:
+                speed = min(speed + 1, len(WATCH_SPEEDS) - 1)
+            if "left" in actions:
+                speed = max(speed - 1, 0)
+            if phase == "intermission":
+                frame = self.title_renderer.render_message(None, lives=1)
+                phase_timer -= 1
+                if phase_timer <= 0 or "start" in actions:
+                    phase = "play"
+                self._present(frame)
+                continue
+            if phase == "play":
+                step_timer += 1
+                if step_timer >= GRID_STEP_FRAMES // WATCH_SPEEDS[speed]:
+                    step_timer = 0
+                    obs, r, term, trunc, info = env.step(
+                        policy(state_key(obs)))
+                    ret += r
+                    if term or trunc:
+                        phase = "end"
+                        phase_timer = GRID_END_FRAMES
+                        if info["win"]:
+                            message = "THANK YOU MARIO!"
+                        elif info["dead"]:
+                            message = "GAME OVER"
+                        else:
+                            message = "TIME UP"
+                        self.visited.append(message)
+            else:
+                phase_timer -= 1
+                if phase_timer <= 0 or "start" in actions:
+                    break
+            self._present(self.grid_frame(
+                env, ret, message, ai=(label, WATCH_SPEEDS[speed])))
 
 
 def build_parser():

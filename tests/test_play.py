@@ -34,7 +34,8 @@ def test_title_screen_renders():
 
 def test_menu_quit_option():
     k = pygame
-    app = make_app({5: [k.K_DOWN], 6: [k.K_DOWN], 7: [k.K_RETURN]})
+    app = make_app({5: [k.K_DOWN], 6: [k.K_DOWN], 7: [k.K_DOWN],
+                    8: [k.K_RETURN]})
     app.run_title()
     assert app.closed and app.frames < 20 and app.visited == []
 
@@ -48,8 +49,9 @@ def test_menu_nes_then_back_then_simplified_then_quit():
         311: [k.K_LEFT],            # V3 -> V2
         312: [k.K_RETURN],
         600: [k.K_ESCAPE],
-        610: [k.K_DOWN],            # curseur sur QUITTER
-        611: [k.K_RETURN],
+        610: [k.K_DOWN],            # MODELES
+        611: [k.K_DOWN],            # QUITTER
+        612: [k.K_RETURN],
     }
     app = make_app(script)
     app.run_title()
@@ -84,3 +86,46 @@ def test_fullscreen_toggle_keeps_aspect():
     app._present(frame, fps=0)
     app.toggle_fullscreen()
     assert app.screen.get_size() == (256, 240)
+
+
+def _train_tiny_model(root):
+    from agents.metrics import article_metrics
+    from agents.registry import save_model
+    from agents.training import TrainConfig, train_qlearning
+
+    cfg = TrainConfig(level="v1", episodes=200, seed=5, eval_every=0,
+                      log_every=0)
+    agent, history, tests, final, _ = train_qlearning(cfg, log=None)
+    meta = dict(cfg.as_dict(), algo="qlearning",
+                metrics=article_metrics(history), greedy=final)
+    return save_model(agent, meta, history, tests, root=root), final
+
+
+def test_models_menu_watch_agent(tmp_path, monkeypatch):
+    k = pygame
+    path, final = _train_tiny_model(tmp_path)
+    monkeypatch.setenv("MARIO_MODELS_DIR", str(tmp_path))
+    script = {
+        5: [k.K_UP, k.K_UP],        # VERSION NES -> QUITTER -> MODELES
+        6: [k.K_RETURN],            # liste des modèles
+        8: [k.K_RETURN],            # le premier modèle joue
+        10: [k.K_RETURN],           # passer l'écran WORLD 1-1
+        12: [k.K_RIGHT, k.K_RIGHT, k.K_RIGHT],     # vitesse x8
+    }
+    app = make_app(script, max_frames=1400)
+    app.run_title()
+    expected = ("THANK YOU MARIO!" if final["win"] else
+                "GAME OVER" if final["dead"] else "TIME UP")
+    assert app.visited[:3] == ["models", "watch_" + path.name, expected]
+    # après la fin de partie : retour à la liste des modèles (panneau brun)
+    assert tuple(app.last_frame[120, 30]) == (0xC8, 0x4C, 0x0C)
+
+
+def test_models_menu_empty(tmp_path, monkeypatch):
+    k = pygame
+    monkeypatch.setenv("MARIO_MODELS_DIR", str(tmp_path / "vide"))
+    script = {5: [k.K_UP, k.K_UP], 6: [k.K_RETURN], 8: [k.K_RETURN],
+              10: [k.K_ESCAPE]}
+    app = make_app(script)
+    app.run_title()
+    assert app.visited == ["models"] and app.closed

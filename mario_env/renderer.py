@@ -99,6 +99,11 @@ TITLE_BOARD = (32, 32, 224, 112)          # x0, y0, x1, y1
 TITLE_OPTION_X = 56
 TITLE_OPTION_Y = 136
 TITLE_TOP_Y = 184
+MODELS_BOARD = (16, 40, 240, 200)
+MODELS_LIST_X = 40
+MODELS_LIST_Y = 64
+MODELS_VISIBLE = 5
+MODELS_LABEL_CHARS = 24
 
 
 def mini_text(frame, s, x, y):
@@ -430,12 +435,44 @@ class Renderer:
              L.START_Y + 16 + SPRITE_DY)
         self.draw_hud(frame, show_time=False, fc=fc)
         self._draw_title_board(frame)
+        # 2-3 options : place du jeu original ; au-delà on remonte la liste
+        y0 = TITLE_OPTION_Y - 8 * max(0, len(options) - 3)
         for i, label in enumerate(options):
-            text(frame, label, TITLE_OPTION_X, TITLE_OPTION_Y + 16 * i,
+            text(frame, label, TITLE_OPTION_X, y0 + 16 * i, pal="peach")
+        draw(frame, "cursor", "cursor", TITLE_OPTION_X - 16, y0 + 16 * cursor)
+        top_y = max(TITLE_TOP_Y, y0 + 16 * len(options))
+        text(frame, f"TOP- {top_score:06d}", 96, top_y, pal="peach")
+        return frame
+
+    def render_model_list(self, labels, cursor, info=(), first=0,
+                          visible=MODELS_VISIBLE, fc=0):
+        """Menu MODELES : panneau du titre agrandi avec la liste des modèles.
+
+        ``labels`` : textes des lignes (la dernière est « RETOUR ») ;
+        ``first`` : première ligne affichée (défilement) ;
+        ``info`` : quelques lignes de détails sur le modèle sélectionné.
+        """
+        if "overworld" not in self._static:
+            self._build_static("overworld")
+        frame = self._static["overworld"][:, 0:SCREEN_W].copy()
+        self.draw_hud(frame, show_time=False, fc=fc)
+        x0, y0, x1, y1 = MODELS_BOARD
+        frame[y0:y1, x0:x1] = NES_PALETTE[0x0F]
+        frame[y0 + 1:y1 - 1, x0 + 1:x1 - 1] = NES_PALETTE[0x36]
+        frame[y0 + 2:y1 - 2, x0 + 2:x1 - 2] = NES_PALETTE[0x17]
+        frame[y1 - 3:y1 - 1, x0 + 2:x1 - 1] = NES_PALETTE[0x0F]
+        frame[y0 + 2:y1 - 1, x1 - 3:x1 - 1] = NES_PALETTE[0x0F]
+        text(frame, "MODELES", 128 - 4 * 7, y0 + 10)
+        for row, i in enumerate(range(first, min(first + visible,
+                                                  len(labels)))):
+            y = MODELS_LIST_Y + 16 * row
+            text(frame, labels[i][:MODELS_LABEL_CHARS], MODELS_LIST_X, y,
                  pal="peach")
-        draw(frame, "cursor", "cursor", TITLE_OPTION_X - 16,
-             TITLE_OPTION_Y + 16 * cursor)
-        text(frame, f"TOP- {top_score:06d}", 96, TITLE_TOP_Y, pal="peach")
+            if i == cursor:
+                draw(frame, "cursor", "cursor", MODELS_LIST_X - 16, y)
+        for k, line in enumerate(info):
+            text(frame, line[:MODELS_LABEL_CHARS + 2], x0 + 12,
+                 y1 - 12 - 12 * len(info) + 12 * k)
         return frame
 
     @staticmethod

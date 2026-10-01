@@ -12,13 +12,15 @@ dependencies = ["numpy>=1.23", "gymnasium>=0.29"]
 
 [project.optional-dependencies]
 play = ["pygame-ce>=2.3"]
-dev = ["pygame-ce>=2.3", "pytest>=7"]
+rl = ["matplotlib>=3.5"]
+dev = ["pygame-ce>=2.3", "pytest>=7", "matplotlib>=3.5"]
 
 [project.scripts]
 mario-play = "mario_env.play:main"
 
 [tool.setuptools.packages.find]
-include = ["mario_env*"]
+include = ["mario_env*", "agents*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]

@@ -4,7 +4,7 @@ Projet de groupe *Reinforcement Learning* : veille scientifique de l'article
 **« Reinforcement Learning in Super Mario Bros: Curriculum, Pedagogy, and Optimal
 Level Design in World 1-1 »** (Ponnock & Ho, 2026).
 
-Ce dépôt contient **le jeu uniquement** (aucun algorithme de RL) :
+Ce dépôt contient :
 
 1. **Une copie jouable du niveau 1-1** de Super Mario Bros. (NES, 1985), avec la
    physique d'origine au sous-pixel près, tous les blocs, ennemis, power-ups,
@@ -16,6 +16,9 @@ Ce dépôt contient **le jeu uniquement** (aucun algorithme de RL) :
      curriculum). Idéal pour Q-Learning, SARSA et Monte Carlo tabulaires.
    * `MarioNES-v0` — le **vrai jeu** (60 images/s) avec observations au choix
      (grille de tuiles, vecteur, pixels, format de l'article). Idéal pour DQN.
+3. **Nos agents** (dossier `agents/`) : Q-Learning tabulaire pour commencer,
+   entraîné avec `train_qlearning.py` ; les modèles entraînés se regardent
+   jouer depuis le menu **MODELES** du jeu (section 7).
 
 ![Niveau 1-1 complet](docs/niveau_1-1.png)
 
@@ -34,10 +37,10 @@ pip install -r requirements.txt
 ```
 
 Dépendances : `numpy`, `gymnasium`, `pygame-ce` (affichage/clavier seulement),
-`pytest` (tests). Le moteur et les environnements fonctionnent **sans pygame**
+`matplotlib` (courbes d'apprentissage), `pytest` (tests). Le moteur et les environnements fonctionnent **sans pygame**
 (mode sans affichage pour l'entraînement).
 
-Vérification : `python -m pytest` (60 tests, quelques secondes).
+Vérification : `python -m pytest` (70 tests, quelques secondes).
 
 ---
 
@@ -68,6 +71,8 @@ d'origine (1 / 2 PLAYER GAME) sont remplacées par :
 * **VERSION NES** : le vrai jeu ;
 * **VERSION SIMPLIFIEE V3** : l'environnement discret de l'article, jouable
   (← → sur cette ligne pour choisir V1, V2 ou V3) ;
+* **MODELES** : la liste des agents entraînés (dossier `models/`) ; Entrée
+  sur un modèle pour le **regarder jouer en direct** (section 7) ;
 * **QUITTER**.
 
 Comme sur la NES, **SELECT** (Tab, ou ↑ / ↓) déplace le champignon et
@@ -327,7 +332,79 @@ d'un run de l'article (v3) demandent de l'ordre d'une minute de simulation avec
 
 ---
 
-## 7. Organisation du code
+## 7. Nos agents : Q-Learning
+
+### Lancer un entraînement
+
+```bash
+python train_qlearning.py --level v1 --episodes 3000 --seeds 42
+python train_qlearning.py --level v1 --episodes 10000 --seeds 42 43 44 45 46
+python train_qlearning.py --help        # tous les réglages
+```
+
+Réglages par défaut = ceux de l'article (section 2.2) : α = 0,1 ; γ = 0,99 ;
+ε part de 1, est multiplié par 0,999 après chaque épisode, plancher 0,01 ;
+Q-table initialisée à 0 ; égalités départagées au hasard ; récompenses du
+tableau 2 ; 1000 pas maximum par épisode. Plusieurs graines tournent **en
+parallèle** (une par cœur du processeur) et le script affiche alors la
+moyenne ± l'écart-type, comme le tableau 3 de l'article.
+
+Chaque graine crée un dossier `models/qlearning_<version>_s<graine>_<épisodes>ep/` :
+
+| Fichier | Contenu |
+|---|---|
+| `meta.json` | réglages, mesures de l'article, test glouton, durée |
+| `qtable.npz` | la Q-table (une ligne par état : l'état et ses 3 valeurs) |
+| `history.csv` | une ligne par épisode (retour, victoire, mort, pas, colonne atteinte, ε…) — à ouvrir dans Excel / pandas |
+| `curves.png` | courbes : taux de victoire, retour, distance, ε |
+
+Un modèle du même nom n'est pas écrasé (suffixe `_2`, `_3`…) sauf avec
+`--overwrite`.
+
+**Mesures affichées** (section 2.3.3 de l'article) : taux de victoire et
+retour moyen sur les 500 derniers épisodes, épisodes pour atteindre 50 % et
+80 % de victoires (moyenne glissante sur 100 épisodes), et en v2/v3 briques,
+blocs ? et ennemis par épisode. En plus : un **test glouton** (une partie avec
+ε = 0, sans apprendre) tous les 100 épisodes et à la fin — il montre ce que
+l'agent a réellement retenu, sans le bruit de l'exploration.
+
+### Regarder un modèle jouer
+
+`python play.py` → **MODELES** → Entrée sur un modèle. L'agent joue sa
+politique gloutonne (ε = 0) à 7,5 pas/s ; **→ / ←** accélère / ralentit
+(x1, x2, x4, x8), **Échap** revient à la liste. En fin de partie, retour
+automatique à la liste. La partie affichée est exactement celle du test
+glouton final.
+
+### Premier résultat : v1, 3000 épisodes, graine 42
+
+| Mesure | Notre run | Article (v1, 10 000 épisodes, 5 graines) |
+|---|---|---|
+| Taux de victoire (500 derniers) | 93,4 % | 98,8 ± 1,1 % |
+| Retour moyen (500 derniers) | 183,4 | 191,7 ± 2,1 |
+| Épisodes pour 50 % | 976 | 1345 |
+| Épisodes pour 80 % | 1368 | 2122 |
+| Test glouton | gagné en 234 pas (retour 197,2) | — |
+
+Entraînement : 5 secondes. Attention à la comparaison : après 3000 épisodes,
+ε vaut encore 0,05 (contre 0,01 pour l'article), donc l'agent joue encore au
+hasard un pas sur 20 pendant les 500 derniers épisodes, ce qui fait baisser le
+taux de victoire et le retour ; et une seule graine ne donne pas d'écart-type.
+
+![Courbes Q-Learning v1](models/qlearning_v1_s42_3000ep/curves.png)
+
+### Utiliser l'agent dans son propre code
+
+```python
+from agents import QLearningAgent, TrainConfig, train_qlearning, load_agent
+agent, history, tests, final, seconds = train_qlearning(
+    TrainConfig(level="v2", episodes=2000, seed=42))
+agent = load_agent("models/qlearning_v1_s42_3000ep")   # recharger un modèle
+```
+
+---
+
+## 8. Organisation du code
 
 ```
 mario_env/
@@ -343,6 +420,13 @@ mario_env/
     grid_env.py    MarioGrid-v0 (environnement de l'article)
     nes_env.py     MarioNES-v0 (vrai jeu)
     common.py      jeux d'actions, récompenses, codes
+agents/
+  qlearning.py     agent Q-Learning (Q-table, epsilon-greedy, mise à jour)
+  training.py      boucle d'entraînement et test glouton
+  metrics.py       mesures de l'article et courbes
+  registry.py      sauvegarde / liste des modèles (dossier models/)
+models/            modèles entraînés (lus par le menu MODELES)
+train_qlearning.py lancer un entraînement Q-Learning
 scripts/           benchmark.py, export_images.py (figures pour le rapport)
 tests/             tests automatiques (pytest)
 docs/              images du README
