@@ -409,11 +409,12 @@ glouton final.
 | SARSA | v2 | 6 000 | 100,0 % | 212,2 | 907 | 1304 | gagné, 229 pas |
 | SARSA | v3 | 6 000 | 95,6 % | 250,9 | 2812 | 3416 | gagné, 272 pas |
 | Monte Carlo | v3 | 6 000 | 96,8 % | 248,5 | 2725 | 3598 | gagné, 473 pas |
+| DQN (5 graines, 42–46) | v3 | 6 000 | 41,5 ± 12,5 % | 124,9 ± 30,3 | 5224 ± 499 | jamais | gagné pour 3 graines sur 5 |
 
 Article (5 graines, 10 000 épisodes) : Q-Learning v1 98,8 % / 191,7 / 1345 /
 2122 ; v2 98,9 % / 205,5 / 1241 / 1964 ; v3 86,5 % / 173,3 / 3157 / 4029 ;
-SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446 ; Monte Carlo v3 94,9 % / 173,9 / 2816 / 3493. Une seule graine pour l'instant :
-pas encore d'écart-type.
+SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446 ; Monte Carlo v3 94,9 % / 173,9 / 2816 / 3493. DQN v3 76,4 % / 159,4 / 2643 / 4016. Une seule graine pour les tableaux pour l'instant (pas encore d'écart-type) ;
+5 graines pour DQN.
 
 ![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
 
