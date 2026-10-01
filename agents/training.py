@@ -17,6 +17,11 @@ from typing import Optional
 from mario_env import MarioGridEnv, state_key
 
 from .qlearning import QLearningAgent
+from .sarsa import SarsaAgent
+
+# Algorithmes disponibles : nom -> classe de l'agent
+AGENT_CLASSES = {"qlearning": QLearningAgent, "sarsa": SarsaAgent}
+ALGO_NAMES = {"qlearning": "Q-Learning", "sarsa": "SARSA"}
 
 # Ce qu'on note à la fin de chaque épisode (une colonne de history.csv chacun)
 HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
@@ -27,6 +32,7 @@ HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
 @dataclass
 class TrainConfig:
     """Tous les réglages d'un entraînement (valeurs par défaut = article)."""
+    algo: str = "qlearning"        # "qlearning" ou "sarsa"
     level: str = "v1"
     episodes: int = 3000
     seed: int = 42
@@ -71,6 +77,35 @@ def play_episode(env, choose, learn=None):
             max_col = info["col"]
         if terminated or truncated:
             break
+    return _summary(info, total, max_col, truncated)
+
+
+def play_sarsa_episode(env, agent, epsilon):
+    """Un épisode d'entraînement SARSA.
+
+    Ordre propre à SARSA : on choisit l'action suivante a2 *avant* la mise à
+    jour (elle sert dans la cible), puis on joue exactement a2 au pas suivant.
+    """
+    obs, info = env.reset()
+    s = state_key(obs)
+    a = agent.act(s, epsilon)
+    total = 0.0
+    max_col = info["col"]
+    while True:
+        obs, r, terminated, truncated, info = env.step(a)
+        s2 = state_key(obs)
+        a2 = None if terminated else agent.act(s2, epsilon)
+        agent.update(s, a, r, s2, a2, terminated)
+        total += r
+        if info["col"] > max_col:
+            max_col = info["col"]
+        if terminated or truncated:
+            break
+        s, a = s2, a2
+    return _summary(info, total, max_col, truncated)
+
+
+def _summary(info, total, max_col, truncated):
     st = info["stats"]
     return {"return": total, "win": int(info["win"]), "dead": int(info["dead"]),
             "timeout": int(truncated), "steps": info["t"], "max_col": max_col,
@@ -87,11 +122,17 @@ def greedy_test(env, agent, seed=0):
     return play_episode(env, agent.greedy_policy(seed))
 
 
-def train_qlearning(cfg: TrainConfig, log=print):
-    """Entraîne un agent Q-Learning et renvoie (agent, historique, tests)."""
+def train(cfg: TrainConfig, log=print):
+    """Entraîne un agent (Q-Learning ou SARSA selon ``cfg.algo``).
+
+    Renvoie (agent, historique, tests gloutons, test final, durée en s).
+    """
+    if cfg.algo not in AGENT_CLASSES:
+        raise ValueError(f"algorithme inconnu : {cfg.algo!r}")
     env = make_env(cfg)
     env.reset(seed=cfg.seed)
-    agent = QLearningAgent(env.action_space.n, cfg.alpha, cfg.gamma, cfg.seed)
+    agent = AGENT_CLASSES[cfg.algo](env.action_space.n, cfg.alpha, cfg.gamma,
+                                    cfg.seed)
     history = {k: [] for k in HISTORY_FIELDS}
     tests = []
     eps = cfg.eps_start
@@ -99,7 +140,10 @@ def train_qlearning(cfg: TrainConfig, log=print):
 
     for ep in range(1, cfg.episodes + 1):
         # --- une partie d'entraînement : epsilon-greedy + mise à jour ---
-        res = play_episode(env, lambda s: agent.act(s, eps), agent.update)
+        if cfg.algo == "sarsa":
+            res = play_sarsa_episode(env, agent, eps)
+        else:
+            res = play_episode(env, lambda s: agent.act(s, eps), agent.update)
         res["epsilon"] = eps
         res["n_states"] = len(agent.q)
         for k in HISTORY_FIELDS:
@@ -125,13 +169,18 @@ def train_qlearning(cfg: TrainConfig, log=print):
     return agent, history, tests, final, seconds
 
 
-def run_seed(cfg_dict):
-    """Version « processus séparé » de train_qlearning (une graine).
+def train_qlearning(cfg: TrainConfig, log=print):
+    """Ancien nom de ``train`` (Q-Learning par défaut)."""
+    return train(cfg, log)
 
-    Utilisée par train_qlearning.py pour lancer plusieurs graines en même
-    temps, une par cœur du processeur.
+
+def run_seed(cfg_dict):
+    """Version « processus séparé » de train (une graine).
+
+    Utilisée par train.py pour lancer plusieurs graines en même temps, une
+    par cœur du processeur.
     """
     cfg = TrainConfig(**cfg_dict)
-    agent, history, tests, final, seconds = train_qlearning(
+    agent, history, tests, final, seconds = train(
         cfg, log=lambda msg: print(msg, flush=True))
     return cfg_dict, agent.q, history, tests, final, seconds

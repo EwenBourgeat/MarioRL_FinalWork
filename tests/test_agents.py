@@ -90,3 +90,46 @@ def test_registry_roundtrip(tmp_path):
     lines = (p1 / "history.csv").read_text().splitlines()
     assert len(lines) == 51 and lines[0].startswith("episode,return,win")
     json.loads((p1 / "meta.json").read_text())
+
+
+def test_sarsa_update_uses_the_next_chosen_action():
+    from agents.sarsa import SarsaAgent
+
+    s, s2 = (1, 2, 3), (4, 5, 6)
+    agent = SarsaAgent(3, alpha=0.1, gamma=0.99, seed=0)
+    agent.q[s2] = [-5.0, 10.0, 2.0]
+    # a' = droite (1) : cible = 0.5 + 0.99 * 10 = 10.4, comme Q-Learning
+    assert agent.update(s, 1, 0.5, s2, 1, False) == pytest.approx(10.4)
+    # a' = rien (0), tiré au hasard : cible = 0.5 + 0.99 * (-5) = -4.45
+    agent.q[s] = [0.0, 0.0, 0.0]
+    assert agent.update(s, 1, 0.5, s2, 0, False) == pytest.approx(-4.45)
+    # fin de partie : pas d'action suivante, cible = r
+    agent.q[s] = [0.0, 0.0, 0.0]
+    agent.update(s, 2, -50.0, s2, None, True)
+    assert agent.q[s][2] == pytest.approx(-5.0)
+
+
+def test_sarsa_training_and_registry(tmp_path):
+    from agents.sarsa import SarsaAgent
+    from agents.training import train
+
+    cfg = TrainConfig(algo="sarsa", level="v1", episodes=300, seed=3,
+                      eval_every=0, log_every=0)
+    a1, h1, _, g1, _ = train(cfg, log=None)
+    a2, h2, _, g2, _ = train(cfg, log=None)
+    assert h1 == h2 and a1.q == a2.q and g1 == g2
+    assert isinstance(a1, SarsaAgent)
+    meta = dict(cfg.as_dict(), metrics=article_metrics(h1), greedy=g1)
+    path = save_model(a1, meta, h1, [], root=tmp_path)
+    assert path.name == "sarsa_v1_s3_300ep"
+    (model,) = list_models(tmp_path)
+    assert model["algo"] == "sarsa" and model["label"] == "SARSA V1 S3 300"
+    back = load_agent(model)
+    assert isinstance(back, SarsaAgent) and back.q == a1.q
+
+
+def test_unknown_algorithm_is_refused():
+    from agents.training import train
+
+    with pytest.raises(ValueError):
+        train(TrainConfig(algo="nope", episodes=1), log=None)

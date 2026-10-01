@@ -16,8 +16,8 @@ Ce dépôt contient :
      curriculum). Idéal pour Q-Learning, SARSA et Monte Carlo tabulaires.
    * `MarioNES-v0` — le **vrai jeu** (60 images/s) avec observations au choix
      (grille de tuiles, vecteur, pixels, format de l'article). Idéal pour DQN.
-3. **Nos agents** (dossier `agents/`) : Q-Learning tabulaire pour commencer,
-   entraîné avec `train_qlearning.py` ; les modèles entraînés se regardent
+3. **Nos agents** (dossier `agents/`) : Q-Learning et SARSA tabulaires,
+   entraînés avec `train.py` ; les modèles entraînés se regardent
    jouer depuis le menu **MODELES** du jeu (section 7).
 
 ![Niveau 1-1 complet](docs/niveau_1-1.png)
@@ -40,7 +40,7 @@ Dépendances : `numpy`, `gymnasium`, `pygame-ce` (affichage/clavier seulement),
 `matplotlib` (courbes d'apprentissage), `pytest` (tests). Le moteur et les environnements fonctionnent **sans pygame**
 (mode sans affichage pour l'entraînement).
 
-Vérification : `python -m pytest` (70 tests, quelques secondes).
+Vérification : `python -m pytest` (73 tests, quelques secondes).
 
 ---
 
@@ -333,24 +333,38 @@ d'un run de l'article (v3) demandent de l'ordre d'une minute de simulation avec
 
 ---
 
-## 7. Nos agents : Q-Learning
+## 7. Nos agents : Q-Learning et SARSA
 
 ### Lancer un entraînement
 
 ```bash
-python train_qlearning.py --level v1 --episodes 3000 --seeds 42
-python train_qlearning.py --level v1 --episodes 10000 --seeds 42 43 44 45 46
-python train_qlearning.py --help        # tous les réglages
+python train.py --algo qlearning --level v1 --episodes 10000 --seeds 42
+python train.py --algo sarsa --level v1 --episodes 6000 --seeds 42
+python train.py --algo sarsa --level v3 --episodes 10000 --seeds 42 43 44 45 46
+python train.py --help        # tous les réglages
 ```
 
-Réglages par défaut = ceux de l'article (section 2.2) : α = 0,1 ; γ = 0,99 ;
-ε part de 1, est multiplié par 0,999 après chaque épisode, plancher 0,01 ;
+(`python train_qlearning.py ...` reste un raccourci pour `--algo qlearning`.)
+
+**Les deux algorithmes** utilisent la même Q-table et le même ε-greedy ; seule
+la cible de la mise à jour change :
+
+* **Q-Learning** (`agents/qlearning.py`) : cible = r + γ × note du *meilleur*
+  bouton dans la situation suivante (il suppose qu'il jouera parfaitement) ;
+* **SARSA** (`agents/sarsa.py`) : cible = r + γ × note du bouton qu'il va
+  *vraiment* jouer ensuite, hasard compris. Il tient donc compte de ses
+  propres erreurs d'exploration et apprend des chemins plus prudents.
+
+Réglages par défaut = ceux de l'article (section 2.2), identiques pour les
+deux : α = 0,1 ; γ = 0,99 ;
+ε part de 1, est multiplié par 0,999 après chaque épisode, plancher 0,01
+(atteint à l'épisode 4604) ;
 Q-table initialisée à 0 ; égalités départagées au hasard ; récompenses du
 tableau 2 ; 1000 pas maximum par épisode. Plusieurs graines tournent **en
 parallèle** (une par cœur du processeur) et le script affiche alors la
 moyenne ± l'écart-type, comme le tableau 3 de l'article.
 
-Chaque graine crée un dossier `models/qlearning_<version>_s<graine>_<épisodes>ep/` :
+Chaque graine crée un dossier `models/<algo>_<version>_s<graine>_<épisodes>ep/` :
 
 | Fichier | Contenu |
 |---|---|
@@ -378,29 +392,28 @@ politique gloutonne (ε = 0) à 7,5 pas/s ; **→ / ←** accélère / ralentit
 automatique à la liste. La partie affichée est exactement celle du test
 glouton final.
 
-### Premier résultat : v1, 3000 épisodes, graine 42
+### Nos résultats (graine 42)
 
-| Mesure | Notre run | Article (v1, 10 000 épisodes, 5 graines) |
-|---|---|---|
-| Taux de victoire (500 derniers) | 93,4 % | 98,8 ± 1,1 % |
-| Retour moyen (500 derniers) | 183,4 | 191,7 ± 2,1 |
-| Épisodes pour 50 % | 976 | 1345 |
-| Épisodes pour 80 % | 1368 | 2122 |
-| Test glouton | gagné en 234 pas (retour 197,2) | — |
+| Algorithme | Niveau | Épisodes | Victoires (500 dern.) | Retour moyen | → 50 % | → 80 % | Test glouton |
+|---|---|---|---|---|---|---|---|
+| Q-Learning | v1 | 10 000 | 99,2 % | 195,5 | 976 | 1368 | gagné, 234 pas |
+| Q-Learning | v2 | 10 000 | 99,2 % | 213,2 | 1080 | 1712 | gagné, 241 pas |
+| Q-Learning | v3 | 10 000 | 93,0 % | 241,0 | 2808 | 3468 | gagné, 275 pas |
+| SARSA | v1 | 6 000 | 100,0 % | 197,4 | 767 | 1132 | gagné, 223 pas |
 
-Entraînement : 5 secondes. Attention à la comparaison : après 3000 épisodes,
-ε vaut encore 0,05 (contre 0,01 pour l'article), donc l'agent joue encore au
-hasard un pas sur 20 pendant les 500 derniers épisodes, ce qui fait baisser le
-taux de victoire et le retour ; et une seule graine ne donne pas d'écart-type.
+Article (5 graines, 10 000 épisodes) : Q-Learning v1 98,8 % / 191,7 / 1345 /
+2122 ; v2 98,9 % / 205,5 / 1241 / 1964 ; v3 86,5 % / 173,3 / 3157 / 4029 ;
+SARSA v1 100,0 % / 193,9 / 1054 / 1553. Une seule graine pour l'instant :
+pas encore d'écart-type.
 
-![Courbes Q-Learning v1](models/qlearning_v1_s42_3000ep/curves.png)
+![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
 
 ### Utiliser l'agent dans son propre code
 
 ```python
-from agents import QLearningAgent, TrainConfig, train_qlearning, load_agent
-agent, history, tests, final, seconds = train_qlearning(
-    TrainConfig(level="v2", episodes=2000, seed=42))
+from agents import TrainConfig, train, load_agent
+agent, history, tests, final, seconds = train(
+    TrainConfig(algo="sarsa", level="v2", episodes=2000, seed=42))
 agent = load_agent("models/qlearning_v1_s42_3000ep")   # recharger un modèle
 ```
 
@@ -424,11 +437,13 @@ mario_env/
     common.py      jeux d'actions, récompenses, codes
 agents/
   qlearning.py     agent Q-Learning (Q-table, epsilon-greedy, mise à jour)
+  sarsa.py         agent SARSA (même Q-table, autre mise à jour)
   training.py      boucle d'entraînement et test glouton
   metrics.py       mesures de l'article et courbes
   registry.py      sauvegarde / liste des modèles (dossier models/)
 models/            modèles entraînés (lus par le menu MODELES)
-train_qlearning.py lancer un entraînement Q-Learning
+train.py           lancer un entraînement (--algo qlearning ou sarsa)
+train_qlearning.py raccourci pour train.py --algo qlearning
 scripts/           benchmark.py, export_images.py (figures pour le rapport)
 tests/             tests automatiques (pytest)
 docs/              images du README

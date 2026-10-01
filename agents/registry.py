@@ -104,7 +104,7 @@ def list_models(root=None):
 
 def load_agent(meta_or_path):
     """Recharge l'agent d'un modèle (dict de list_models ou chemin)."""
-    from .qlearning import QLearningAgent
+    from .training import AGENT_CLASSES
 
     if isinstance(meta_or_path, dict):
         path = Path(meta_or_path["path"])
@@ -113,6 +113,8 @@ def load_agent(meta_or_path):
         path = Path(meta_or_path)
         with open(path / "meta.json", encoding="utf-8") as f:
             meta = json.load(f)
-    if meta.get("algo", "qlearning") != "qlearning":
-        raise ValueError(f"algorithme non pris en charge : {meta['algo']}")
-    return QLearningAgent.load(path / "qtable.npz", seed=meta.get("seed", 0))
+    algo = meta.get("algo", "qlearning")
+    if algo not in AGENT_CLASSES:
+        raise ValueError(f"algorithme non pris en charge : {algo}")
+    return AGENT_CLASSES[algo].load(path / "qtable.npz",
+                                    seed=meta.get("seed", 0))
