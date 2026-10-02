@@ -418,6 +418,17 @@ SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84
 
 ![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
 
+### Notre DQN (étude étape par étape, v3, graines 42 et 43, 6000 épisodes)
+
+Chaque étape ajoute une seule amélioration (`python train.py --algo dqn
+--level v3 --obs full --variant E1 ...`). Victoires = 500 derniers épisodes
+(avec ε = 0,05) ; robustesse = 50 parties avec 2 % de hasard.
+
+| Étape | Changement | Victoires | → 50 % | → 80 % | Robustesse (42 / 43) |
+|---|---|---|---|---|---|
+| 0 | DQN de l'article (vue de l'article) | 37,1 % | 5284 | jamais | 44 % / 82 % |
+| 1 | + vue complète (`--obs full`) | 81,1 ± 1,8 % | 2004 | 2837 | 94 % / 92 % |
+
 ### Utiliser l'agent dans son propre code
 
 ```python
