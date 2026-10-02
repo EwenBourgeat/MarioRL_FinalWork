@@ -410,11 +410,12 @@ glouton final.
 | SARSA | v3 | 6 000 | 95,6 % | 250,9 | 2812 | 3416 | gagné, 272 pas |
 | Monte Carlo | v3 | 6 000 | 96,8 % | 248,5 | 2725 | 3598 | gagné, 473 pas |
 | DQN (5 graines, 42–46) | v3 | 6 000 | 41,5 ± 12,5 % | 124,9 ± 30,3 | 5224 ± 499 | jamais | gagné pour 3 graines sur 5 |
+| Notre DQN étape 4 (5 graines, 42–46) | v3 | 6 000 | 93,9 ± 1,5 % | 275,5 ± 3,2 | 2095 ± 129 | 2959 ± 116 | gagné pour 5 graines sur 5 |
 
 Article (5 graines, 10 000 épisodes) : Q-Learning v1 98,8 % / 191,7 / 1345 /
 2122 ; v2 98,9 % / 205,5 / 1241 / 1964 ; v3 86,5 % / 173,3 / 3157 / 4029 ;
-SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446 ; Monte Carlo v3 94,9 % / 173,9 / 2816 / 3493. DQN v3 76,4 % / 159,4 / 2643 / 4016. Une seule graine pour les tableaux pour l'instant (pas encore d'écart-type) ;
-5 graines pour DQN.
+SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84,4 % / 167,2 / 3510 / 4446 ; Monte Carlo v3 94,9 % / 173,9 / 2816 / 3493. DQN v3 76,4 % / 159,4 / 2643 / 4016. Ce tableau montre la graine 42 pour les méthodes à tableau ; leurs résultats
+sur 5 graines sont dans le récapitulatif ci-dessous.
 
 ![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
 
@@ -436,10 +437,11 @@ Chaque étape ajoute une seule amélioration (`python train.py --algo dqn
 | 3 | étape 1 + CNN + limitation + meilleure version (Legion) | 76,6 % | 2210 | 3351 | — (poids perdus) |
 | 4 | étape 1 + ε plancher 0,02 + mémoire 100 000 + limitation + meilleure version (Mac) | **94,5 ± 1,8 %** | 1959 | 3022 | **94 % / 94 %** |
 
-À hasard égal (robustesse, 2 %) : Q-Learning, SARSA et Monte Carlo v3 (graine 42) = 88 % chacun.
+À hasard égal (robustesse, 2 %, 5 graines) : Q-Learning, SARSA et Monte Carlo v3 = 88,8 % chacun ;
+notre DQN étape 4 = 94,0 ± 2,8 % (graines 42 à 46).
 Les victoires des 500 derniers épisodes se mesurent avec ε = 0,05 (étapes 0 à 3) ou 0,02 (étape 4).
-CodeCarbon : étape 3 (Legion, 2 graines, 51 min) 85 Wh / 4,8 g CO₂ ; étape 4 (Mac M4, 2 graines,
-8,5 min) 1,9 Wh / 0,11 g CO₂ (estimé).
+CodeCarbon : étape 3 (Legion, 2 graines, 51 min) 85 Wh / 4,8 g CO₂ ; étape 4 (Mac M4, 5 graines
+en deux lancements) 6,0 Wh / 0,34 g CO₂ (estimé).
 
 Étape 3 (CNN, à lancer sur une machine avec carte graphique, voir
 `--device`) :

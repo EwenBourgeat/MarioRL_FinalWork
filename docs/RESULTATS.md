@@ -14,9 +14,7 @@ partie sans aucun hasard.
 | SARSA | 5 | 0,01 | **96,2 ± 1,2 %** | 88,8 ± 3,0 % | 5 / 5 | 241,3 ± 5,4 | 2753 ± 107 | 3354 ± 100 | 3,8 % |
 | Monte Carlo | 5 | 0,01 | **96,2 ± 0,7 %** | 88,8 ± 2,3 % | 5 / 5 | 258,1 ± 13,3 | 2862 ± 129 | 3450 ± 108 | 3,7 % |
 | DQN de l'article (refait) | 5 | 0,05 | 41,5 ± 12,5 % | 59,6 ± 37,7 % | 3 / 5 | 124,9 ± 30,3 | 5224 ± 499 | jamais | 58,4 % |
-| **Notre DQN (étape 4)** | 2 * | 0,02 | 94,5 ± 1,8 % | **94,0 ± 0,0 %** | 2 / 2 | **276,5 ± 4,0** | **1959 ± 55** | **3022 ± 81** | 5,5 % |
-
-\* graines 44 à 46 en cours (Mac) ; le tableau sera mis à jour.
+| **Notre DQN (étape 4)** | 5 | 0,02 | 93,9 ± 1,5 % | **94,0 ± 2,8 %** | 5 / 5 | **275,5 ± 3,2** | **2095 ± 129** | **2959 ± 116** | 6,1 % |
 
 Les « victoires » ne sont pas mesurées avec le même ε (part de hasard pendant
 l'entraînement) : 1 % pour les tableaux, 5 % pour le DQN de l'article, 2 %
@@ -31,7 +29,7 @@ la colonne à comparer pour savoir qui joue le mieux.
 | SARSA | 6,89 | 3,62 | 4,75 | 266 | 1178 ± 293 |
 | Monte Carlo | 12,06 | 4,88 | 5,34 | **503** (attend les ennemis) | 1108 ± 443 |
 | DQN de l'article | 6,01 | 2,02 | 5,07 | 203 | 572 ± 170 |
-| Notre DQN (étape 4) | **12,68** | **5,24** | **7,16** | 249 | 638 ± 201 |
+| Notre DQN (étape 4) | **12,86** | **5,20** | **6,91** | 248 | 665 ± 123 |
 
 ## 3. Comparaison avec l'article (v3)
 
@@ -58,12 +56,18 @@ probablement plus faciles à écraser, ce qui gonfle aussi le retour.
 | DQN étape 1 | cloud (CPU) | 65 min | ≈ 7 Wh | ≈ 0,4 g | réseau 319 363 poids | extrapolé |
 | DQN étape 2 | cloud (CPU) | 79 min | ≈ 9 Wh | ≈ 0,5 g | réseau 319 363 poids | extrapolé |
 | DQN étape 3 (CNN) | Legion (RTX 3060) | 51 min | 42,6 Wh | 2,4 g | réseau 1 629 475 poids | CodeCarbon (carte graphique mesurée) |
-| **Notre DQN étape 4** | **Mac M4 (CPU)** | **8,5 min** | **0,94 Wh** | **0,05 g** | réseau 319 363 poids | CodeCarbon (estimé) |
+| **Notre DQN étape 4** | **Mac M4 (CPU)** | **8,5 à 14 min** | **1,2 Wh** | **0,07 g** | réseau 319 363 poids | CodeCarbon (estimé) |
 
 Électricité française (≈ 56 g de CO₂ par kWh). Les durées dépendent beaucoup
 de la machine (le Mac M4 est environ 7 fois plus rapide que le cloud pour
 DQN) : comparer l'énergie entre machines donne un ordre de grandeur, pas une
 mesure exacte.
+
+Notre DQN étape 4 a été lancé en deux fois sur le Mac : graines 42-43
+(2 × 2 threads, 8,5 min, 1,88 Wh, soit 0,94 Wh par graine) puis 44-46
+(3 × 3 threads, 14 min, 4,13 Wh, soit 1,38 Wh par graine). Total 5 graines :
+6,0 Wh et 0,34 g de CO₂. La façon de lancer (combien de graines et de threads
+en même temps) change donc la mesure par graine.
 
 ## 5. Étude par étapes de notre DQN (v3, graines 42 et 43, 6000 épisodes)
 
@@ -79,6 +83,9 @@ Ce qui compte : **la vue complète** (+44 points). Les améliorations connues
 de DQN (étape 2) et le CNN (étape 3) n'apportent rien ici ; l'étape 4 apporte
 surtout de la stabilité (moins de hasard en fin d'entraînement, meilleure
 version gardée).
+
+Sur les 5 graines (42 à 46), l'étape 4 donne 93,9 ± 1,5 % de victoires et
+94,0 ± 2,8 % de robustesse (90 à 98 % selon la graine).
 
 ## 6. Niveaux v1 et v2 (1 graine, 42)
 
@@ -103,5 +110,5 @@ Monte Carlo v1/v2 non entraîné (article : 99,1 % et 99,9 %).
    contre 89 % pour les tableaux), grâce à une seule chose : **lui montrer
    tout l'écran** (trous, direction des ennemis).
 4. **Plus gros n'est pas mieux** : le CNN sur carte graphique a coûté environ
-   45 fois plus d'énergie que notre meilleur modèle, pour un moins bon
+   35 fois plus d'énergie que notre meilleur modèle, pour un moins bon
    résultat.
