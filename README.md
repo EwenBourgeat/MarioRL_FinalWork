@@ -429,6 +429,13 @@ Chaque étape ajoute une seule amélioration (`python train.py --algo dqn
 | 0 | DQN de l'article (vue de l'article) | 37,1 % | 5284 | jamais | 44 % / 82 % |
 | 1 | + vue complète (`--obs full`) | 81,1 ± 1,8 % | 2004 | 2837 | 94 % / 92 % |
 | 2 | + Double DQN, 3 pas, limitation, cible douce, meilleure version | 80,6 ± 4,0 % | 2648 | 3194 | 92 % / 86 % |
+| 3 | étape 1 + CNN + limitation + meilleure version (Legion) | 76,6 % | 2210 | 3351 | — (poids perdus) |
+| 4 | étape 1 + ε plancher 0,02 + mémoire 100 000 + limitation + meilleure version (Mac) | **94,5 ± 1,8 %** | 1959 | 3022 | **94 % / 94 %** |
+
+À hasard égal (robustesse, 2 %) : Q-Learning, SARSA et Monte Carlo v3 (graine 42) = 88 % chacun.
+Les victoires des 500 derniers épisodes se mesurent avec ε = 0,05 (étapes 0 à 3) ou 0,02 (étape 4).
+CodeCarbon : étape 3 (Legion, 2 graines, 51 min) 85 Wh / 4,8 g CO₂ ; étape 4 (Mac M4, 2 graines,
+8,5 min) 1,9 Wh / 0,11 g CO₂ (estimé).
 
 Étape 3 (CNN, à lancer sur une machine avec carte graphique, voir
 `--device`) :
