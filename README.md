@@ -409,8 +409,8 @@ glouton final.
 | SARSA | v2 | 6 000 | 100,0 % | 212,2 | 907 | 1304 | gagné, 229 pas |
 | SARSA | v3 | 6 000 | 95,6 % | 250,9 | 2812 | 3416 | gagné, 272 pas |
 | Monte Carlo | v3 | 6 000 | 96,8 % | 248,5 | 2725 | 3598 | gagné, 473 pas |
-| DQN (5 graines, 42–46) | v3 | 6 000 | 41,5 ± 12,5 % | 124,9 ± 30,3 | 5224 ± 499 | jamais | gagné pour 3 graines sur 5 |
-| Notre DQN étape 4 (5 graines, 42–46) | v3 | 6 000 | 93,9 ± 1,5 % | 275,5 ± 3,2 | 2095 ± 129 | 2959 ± 116 | gagné pour 5 graines sur 5 |
+| DQN (5 graines, 42–46) | v3 | 6 000 | 39,7 ± 6,7 % | 120,7 ± 17,7 | 5188 ± 454 | jamais | gagné pour 3 graines sur 5 |
+| Notre DQN étape 4 (5 graines, 42–46) | v3 | 6 000 | 93,7 ± 1,4 % | 273,8 ± 4,1 | 2051 ± 165 | 2955 ± 129 | gagné pour 5 graines sur 5 |
 
 Article (5 graines, 10 000 épisodes) : Q-Learning v1 98,8 % / 191,7 / 1345 /
 2122 ; v2 98,9 % / 205,5 / 1241 / 1964 ; v3 86,5 % / 173,3 / 3157 / 4029 ;
@@ -431,17 +431,17 @@ Chaque étape ajoute une seule amélioration (`python train.py --algo dqn
 
 | Étape | Changement | Victoires | → 50 % | → 80 % | Robustesse (42 / 43) |
 |---|---|---|---|---|---|
-| 0 | DQN de l'article (vue de l'article) | 37,1 % | 5284 | jamais | 44 % / 82 % |
-| 1 | + vue complète (`--obs full`) | 81,1 ± 1,8 % | 2004 | 2837 | 94 % / 92 % |
-| 2 | + Double DQN, 3 pas, limitation, cible douce, meilleure version | 80,6 ± 4,0 % | 2648 | 3194 | 92 % / 86 % |
+| 0 | DQN de l'article (vue de l'article) | 44,2 ± 6,8 % | 5047 | jamais | 62 % / 74 % |
+| 1 | + vue complète (`--obs full`) | 81,8 ± 0,0 % | 1999 | 2900 | 96 % / 78 % |
+| 2 | + Double DQN, 3 pas, limitation, cible douce, meilleure version | 78,2 ± 9,6 % | 2730 | 4330 | 80 % / 90 % |
 | 3 | étape 1 + CNN + limitation + meilleure version (Legion) | 76,6 % | 2210 | 3351 | — (poids perdus) |
 | 4 | étape 1 + ε plancher 0,02 + mémoire 100 000 + limitation + meilleure version (Mac) | **94,5 ± 1,8 %** | 1959 | 3022 | **94 % / 94 %** |
 
 À hasard égal (robustesse, 2 %, 5 graines) : Q-Learning, SARSA et Monte Carlo v3 = 88,8 % chacun ;
-notre DQN étape 4 = 94,0 ± 2,8 % (graines 42 à 46).
+notre DQN étape 4 = 94,4 ± 3,0 % (graines 42 à 46).
 Les victoires des 500 derniers épisodes se mesurent avec ε = 0,05 (étapes 0 à 3) ou 0,02 (étape 4).
-CodeCarbon : étape 3 (Legion, 2 graines, 51 min) 85 Wh / 4,8 g CO₂ ; étape 4 (Mac M4, 5 graines
-en deux lancements) 6,0 Wh / 0,34 g CO₂ (estimé).
+Tout est entraîné sur le Mac M4 avec CodeCarbon, sauf l'étape 3 (Legion, 2 graines, 51 min,
+85 Wh / 4,8 g CO₂). Coût par graine et explications : [`docs/RESULTATS.md`](docs/RESULTATS.md).
 
 Étape 3 (CNN, à lancer sur une machine avec carte graphique, voir
 `--device`) :
