@@ -22,13 +22,7 @@
   "threads": 1,
   "variant": "E3",
   "env": "MarioGrid-v0",
-  "robust": {
-    "episodes": 50,
-    "epsilon": 0.02,
-    "win_rate": 0.02,
-    "avg_return": -23.360000000000014,
-    "death_rate": 0.98
-  },
+  "robust": null,
   "carbon": {
     "energy_kwh": 0.08516630870725246,
     "co2_g": 4.772634773645722,
@@ -856,5 +850,6 @@
       "enemies": 12,
       "jumps": 26
     }
-  ]
+  ],
+  "warning": "Poids perdus (tous à 0) : réseau renvoyé depuis la carte graphique entre processus. Mesures d'entraînement, test glouton et CodeCarbon valables ; test de robustesse invalide (calculé sur les poids à 0). Corrigé dans le code ; à relancer pour obtenir un modèle utilisable."
 }

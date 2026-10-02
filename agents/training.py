@@ -307,4 +307,8 @@ def run_seed(cfg_dict):
     cfg = TrainConfig(**cfg_dict)
     agent, history, tests, final, seconds = train(
         cfg, log=lambda msg: print(msg, flush=True))
+    if hasattr(agent, "detach_for_transfer"):
+        # DQN : réseau ramené sur le processeur avant de quitter ce
+        # processus (sinon, depuis la carte graphique, on perd les poids)
+        agent.detach_for_transfer()
     return cfg_dict, agent, history, tests, final, seconds

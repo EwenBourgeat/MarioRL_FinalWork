@@ -258,6 +258,23 @@ class DQNAgent:
         return loss.item()
 
     # ------------------------------------------------------------------
+    def detach_for_transfer(self):
+        """Prépare l'agent à être renvoyé au programme principal.
+
+        Avec plusieurs graines en parallèle, chaque graine tourne dans un
+        processus à part.  Un réseau resté sur la carte graphique n'est PAS
+        copié en le renvoyant : seule son adresse en mémoire graphique part,
+        et cette mémoire est libérée quand le processus s'arrête (le
+        programme principal lirait des zéros).  On ramène donc le réseau sur
+        le processeur (vraie copie) et on vide la mémoire de replay, devenue
+        inutile (environ 1 Go avec la vue complète).
+        """
+        self.net = self.net.cpu()
+        self.target = self.target.cpu()
+        self.device = torch.device("cpu")
+        self.memory = None
+        self.pending.clear()
+
     def snapshot(self):
         """Copie des poids du réseau (pour garder la meilleure version)."""
         import copy

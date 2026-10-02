@@ -307,3 +307,19 @@ def test_dqn_cnn_train_save_load(tmp_path):
     assert back.cnn
     obs = make_env(cfg).reset()[0]
     assert np.allclose(back.q_values(obs), a1.q_values(obs), atol=1e-6)
+
+
+def test_run_seed_returns_dqn_on_cpu_without_memory():
+    """Graines en parallèle : le réseau doit revenir sur le processeur (un
+    réseau resté sur la carte graphique arriverait vide, que des zéros)."""
+    torch = pytest.importorskip("torch")
+    from agents.training import run_seed
+
+    cfg = TrainConfig(algo="dqn", level="v3", episodes=3, seed=6,
+                      eval_every=0, log_every=0, alpha=None, eps_min=0.05,
+                      obs="full", cnn=True, device="cpu").as_dict()
+    _, agent, _, _, final, _ = run_seed(cfg)
+    assert agent.device == torch.device("cpu") and agent.memory is None
+    assert all(p.device.type == "cpu" for p in agent.net.parameters())
+    assert any(p.abs().sum() > 0 for p in agent.net.parameters())
+    assert greedy_test(make_env(TrainConfig(**cfg)), agent, 6) == final
