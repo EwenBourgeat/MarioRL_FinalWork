@@ -154,3 +154,48 @@ def test_nes_env_multiple_lives():
         if term:
             break
     assert deaths == 2 and term
+
+
+# ----------------------------------------------------------------------
+# Vue complète (notre DQN)
+# ----------------------------------------------------------------------
+def _full_env_at(col, row=11):
+    """Environnement en vue complète, Mario posé en (col, row) au sol."""
+    from mario_env import MarioGridEnv
+    env = MarioGridEnv(level="v3", obs="full")
+    env.reset()
+    env.col, env.row, env.phase = col, row, 0
+    return env, env._obs_full()
+
+
+def test_full_obs_shape_and_values():
+    from mario_env import MarioGridEnv
+    env = MarioGridEnv(level="v3", obs="full")
+    obs, _ = env.reset()
+    assert obs.shape == env.observation_space.shape == (6 * 14 * 28 + 10,)
+    assert set(np.unique(obs)) <= {0, 1}
+
+
+def test_full_obs_shows_pits_mario_and_enemies():
+    env, obs = _full_env_at(85)
+    ch = obs[:6 * 14 * 28].reshape(6, 14, 28)
+    # Mario au milieu (colonne 14 de la vue), sur sa ligne
+    assert np.argwhere(ch[5]).tolist() == [[11, 14]]
+    # le trou des colonnes 86-88 : pas de sol juste devant Mario
+    assert ch[0][12, 14] == 1 and ch[0][12, 15:18].sum() == 0
+    assert ch[0][12, 18] == 1
+    # ennemis : un seul calque par ennemi, selon sa direction
+    left = env.col - 14
+    for e in env.enemies:
+        c = e[0] - left
+        if e[4] and 0 <= c < 28:
+            assert ch[3 if e[2] < 0 else 4, e[1], c] == 1
+    # étape du saut (au sol) et rythme des ennemis : une seule case à 1
+    assert obs[-10:-3].tolist() == [1, 0, 0, 0, 0, 0, 0]
+    assert obs[-3:].sum() == 1
+
+
+def test_paper_obs_unchanged_by_default():
+    from mario_env import MarioGridEnv
+    env = MarioGridEnv(level="v3")
+    assert env.observation_space.shape == (115,)

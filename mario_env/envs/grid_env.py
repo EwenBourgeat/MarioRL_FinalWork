@@ -96,7 +96,7 @@ class MarioGridEnv(gym.Env):
                  max_steps=1000, segment_order=None, viewport=28,
                  block_rows=(4, 8), enemy_rows=(7, 11), enemy_period=3,
                  activation_distance=14, jump_offsets=JUMP_OFFSETS,
-                 render_style="sprites"):
+                 render_style="sprites", obs="paper"):
         super().__init__()
         if level not in ("v1", "v2", "v3"):
             raise ValueError("level doit valoir 'v1', 'v2' ou 'v3'")
@@ -115,10 +115,20 @@ class MarioGridEnv(gym.Env):
         self.activation_distance = int(activation_distance)
         self.jump_offsets = tuple(jump_offsets)
         self.render_style = render_style
+        if obs not in ("paper", "full"):
+            raise ValueError("obs doit valoir 'paper' ou 'full'")
+        self.obs_mode = obs
         self._window = None
         self._build_level()
 
         self.action_space = spaces.Discrete(3)
+        if obs == "full":
+            # vue complète : que des 0 / 1 (voir _obs_full)
+            nvec = [2] * self.full_obs_size()
+            self.observation_space = spaces.MultiDiscrete(
+                np.array(nvec, dtype=np.int64))
+            self.reset()
+            return
         nvec = [L.LEVEL_COLS, N_ROWS, len(self.jump_offsets) + 1]
         nvec += [C.N_PAPER_CODES] * (self.viewport * len(self.block_rows))
         nvec += [C.P_GOOMBA + 1] * (self.viewport * len(self.enemy_rows))
@@ -344,7 +354,53 @@ class MarioGridEnv(gym.Env):
         return self._obs(), float(r), terminated, truncated, self._info()
 
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Vue complète (notre DQN, pas l'article)
+    # ------------------------------------------------------------------
+    # 6 calques de 14 lignes x 28 colonnes autour de Mario, que des 0 / 1 :
+    FULL_CHANNELS = ("solide", "brique", "bloc ?", "ennemi vers la gauche",
+                     "ennemi vers la droite", "Mario")
+
+    def full_obs_size(self):
+        """6 calques x 14 x 28 + étape du saut (7) + rythme des ennemis (3)."""
+        return (len(self.FULL_CHANNELS) * N_ROWS * self.viewport
+                + len(self.jump_offsets) + 1 + self.enemy_period)
+
+    def _obs_full(self):
+        """Tout l'écran autour de Mario, un calque par type d'objet.
+
+        * solide : sol, marches, tuyaux, blocs déjà frappés (les TROUS sont
+          donc visibles : ce sont les colonnes sans sol) ;
+        * brique, bloc ? : les blocs qu'on peut encore frapper ;
+        * ennemi vers la gauche / vers la droite : position ET direction ;
+        * Mario : sa case (toujours la colonne du milieu, sa ligne varie).
+        Puis l'étape du saut et le rythme des ennemis (ils n'avancent qu'un
+        pas sur 3 : savoir quand ils vont bouger aide à sauter au bon moment).
+        """
+        half = self.viewport // 2
+        left = self.col - half                 # colonne du niveau à gauche
+        a = self.col + self.pad - half
+        g = self.grid[:, a:a + self.viewport]
+        ch = np.zeros((len(self.FULL_CHANNELS), N_ROWS, self.viewport),
+                      dtype=np.int64)
+        ch[0] = np.isin(g, (C.P_GROUND, C.P_STEP, C.P_PIPE, C.P_USED))
+        ch[1] = g == C.P_BRICK
+        ch[2] = g == C.P_QBLOCK
+        for e in self.enemies:
+            c = e[0] - left
+            if e[4] and 0 <= c < self.viewport and 0 <= e[1] < N_ROWS:
+                ch[3 if e[2] < 0 else 4, e[1], c] = 1
+        if 0 <= self.row < N_ROWS:
+            ch[5, self.row, half] = 1
+        jump = np.zeros(len(self.jump_offsets) + 1, dtype=np.int64)
+        jump[max(self.phase, 0)] = 1
+        rhythm = np.zeros(self.enemy_period, dtype=np.int64)
+        rhythm[self.t % self.enemy_period] = 1
+        return np.concatenate([ch.ravel(), jump, rhythm])
+
     def _obs(self):
+        if self.obs_mode == "full":
+            return self._obs_full()
         parts = [np.array([self.col, min(max(self.row, 0), N_ROWS - 1),
                            self.phase], dtype=np.int64)]
         a = self.col + self.pad - self.viewport // 2

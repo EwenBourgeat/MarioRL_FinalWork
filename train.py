@@ -19,7 +19,8 @@ from concurrent.futures import ProcessPoolExecutor
 from agents.metrics import (article_metrics, format_metrics, format_summary,
                             plot_curves)
 from agents.registry import save_model
-from agents.training import ALGO_NAMES, TrainConfig, run_seed
+from agents.training import (ALGO_NAMES, TrainConfig, make_env,
+                             robustness_test, run_seed)
 
 
 def build_parser():
@@ -45,6 +46,13 @@ def build_parser():
                    help="limite de pas par épisode")
     p.add_argument("--eval-every", type=int, default=d.eval_every,
                    help="test glouton tous les N épisodes (0 = jamais)")
+    p.add_argument("--obs", choices=["paper", "full"], default=d.obs,
+                   help="vue de l'agent : paper (article) ou full (vue "
+                        "complète, notre DQN)")
+    p.add_argument("--variant", default=None,
+                   help="étiquette de l'expérience, ex. E1 (ajoutée au nom)")
+    p.add_argument("--no-robust", action="store_true",
+                   help="ne pas faire le test de robustesse final")
     p.add_argument("--segments", default=None,
                    help="ordre des segments A-F, ex. FEDCBA")
     p.add_argument("--log-every", type=int, default=d.log_every)
@@ -69,6 +77,7 @@ def main(argv=None):
                            eps_start=args.eps_start, eps_decay=args.eps_decay,
                            eps_min=args.eps_min, max_steps=args.max_steps,
                            eval_every=args.eval_every, segments=args.segments,
+                           obs=args.obs, variant=args.variant,
                            log_every=args.log_every).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
@@ -100,9 +109,17 @@ def main(argv=None):
         print()
         print(f"=== graine {cfg['seed']} ({seconds:.1f} s) ===")
         print(format_metrics(m, cfg["level"], final, cfg["algo"]))
+        robust = None
+        if not args.no_robust:
+            robust = robustness_test(make_env(TrainConfig(**cfg)), agent,
+                                     cfg["seed"])
+            print(f"Test de robustesse      : {robust['win_rate']:.0%} de "
+                  f"victoires sur {robust['episodes']} parties avec "
+                  f"{robust['epsilon']:.0%} de hasard (retour moyen "
+                  f"{robust['avg_return']:.1f})")
         if args.no_save:
             continue
-        meta = dict(cfg, env="MarioGrid-v0",
+        meta = dict(cfg, env="MarioGrid-v0", robust=robust,
                     reward="paper", metrics=m, greedy=final,
                     train_seconds=round(seconds, 2))
         meta.pop("log_every", None)

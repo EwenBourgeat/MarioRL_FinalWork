@@ -188,3 +188,26 @@ def test_dqn_learns_target_and_saves(tmp_path):
     obs = make_env(cfg).reset()[0]
     assert np.allclose(back.q_values(obs), a1.q_values(obs))
     assert greedy_test(make_env(cfg), back, cfg.seed) == g1
+
+
+def test_dqn_full_view_variant_and_robustness(tmp_path):
+    pytest.importorskip("torch")
+    from agents.training import robustness_test, train
+
+    cfg = TrainConfig(algo="dqn", level="v3", episodes=10, seed=2,
+                      eval_every=0, log_every=0, alpha=None, eps_min=0.05,
+                      obs="full", variant="E1")
+    agent, h, _, g, _ = train(cfg, log=None)
+    assert agent.obs_high.shape == (2362,)
+    meta = dict(cfg.as_dict(), metrics=article_metrics(h), greedy=g)
+    path = save_model(agent, meta, h, [], root=tmp_path)
+    assert path.name == "dqn_v3_s2_10ep_e1"
+    (model,) = list_models(tmp_path)
+    from agents.registry import short_label
+    assert short_label(model) == "V3 GRAINE 2 10 EP E1"
+    back = load_agent(model)
+    # le menu recrée l'environnement avec la vue enregistrée dans le modèle
+    env = make_env(TrainConfig(**{k: model[k] for k in ("level", "obs")}))
+    assert greedy_test(env, back, cfg.seed) == g
+    r = robustness_test(env, back, cfg.seed, episodes=3)
+    assert r["episodes"] == 3 and 0 <= r["win_rate"] <= 1

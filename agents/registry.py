@@ -32,13 +32,17 @@ ALGORITHMS = (("qlearning", "Q-LEARNING"), ("sarsa", "SARSA"),
 def short_label(meta):
     """Nom affiché dans la liste d'un algorithme (sans l'algorithme)."""
     s = f"{meta['level']} graine {meta['seed']} {meta['episodes']} ep".upper()
+    if meta.get("variant"):
+        s += " " + meta["variant"].upper()
     if meta.get("segments"):
         s += " " + meta["segments"].upper()
     return s
 
 
-def default_name(algo, level, seed, episodes, segments=None):
+def default_name(algo, level, seed, episodes, segments=None, variant=None):
     name = f"{algo}_{level}_s{seed}_{episodes}ep"
+    if variant:
+        name += "_" + variant.lower()
     if segments:
         name += "_" + "".join(segments).upper()
     return name
@@ -57,7 +61,8 @@ def save_model(agent, meta, history, tests, root=None, name=None,
                overwrite=False):
     root = models_dir(root)
     name = name or default_name(meta["algo"], meta["level"], meta["seed"],
-                                meta["episodes"], meta.get("segments"))
+                                meta["episodes"], meta.get("segments"),
+                                meta.get("variant"))
     path = root / name
     if path.exists() and not overwrite:
         i = 2

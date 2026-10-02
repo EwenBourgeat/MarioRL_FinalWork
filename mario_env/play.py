@@ -512,7 +512,8 @@ class App:
         policy = agent.greedy_policy(meta.get("seed", 0))
         env = MarioGridEnv(level=meta["level"],
                            max_steps=meta.get("max_steps", 1000),
-                           segment_order=meta.get("segments"))
+                           segment_order=meta.get("segments"),
+                           obs=meta.get("obs", "paper"))
         obs, _ = env.reset()
         label = meta.get("label", meta["name"]).upper()
         ret = 0.0

@@ -62,6 +62,8 @@ class TrainConfig:
     max_steps: int = 1000
     eval_every: int = 100          # un test glouton tous les N épisodes
     segments: Optional[str] = None  # ordre des segments A-F (None = normal)
+    obs: str = "paper"             # "paper" (article) ou "full" (vue complète)
+    variant: Optional[str] = None  # étiquette de l'expérience (ex. "E1")
     log_every: int = 500
 
     def as_dict(self):
@@ -70,7 +72,7 @@ class TrainConfig:
 
 def make_env(cfg):
     return MarioGridEnv(level=cfg.level, max_steps=cfg.max_steps,
-                        segment_order=cfg.segments)
+                        segment_order=cfg.segments, obs=cfg.obs)
 
 
 def play_episode(env, choose, learn=None):
@@ -179,6 +181,29 @@ def greedy_test(env, agent, seed=0):
     montre exactement ce que l'agent a retenu (sans le bruit de l'exploration).
     """
     return play_episode(env, agent.greedy_policy(seed))
+
+
+def robustness_test(env, agent, seed=0, episodes=50, epsilon=0.02):
+    """Test de robustesse : 50 parties avec 2 % de hasard, sans apprendre.
+
+    Le test glouton n'est qu'UNE partie parfaite.  Ici, quelques boutons
+    tirés au hasard perturbent Mario : un modèle solide doit quand même
+    gagner presque toujours.
+    """
+    import random
+    rng = random.Random(seed + 1000)
+
+    def choose(s):
+        if rng.random() < epsilon:
+            return rng.randrange(agent.n_actions)
+        return agent.best_action(s, rng)
+
+    res = [play_episode(env, choose) for _ in range(episodes)]
+    n = len(res)
+    return {"episodes": n, "epsilon": epsilon,
+            "win_rate": sum(r["win"] for r in res) / n,
+            "avg_return": sum(r["return"] for r in res) / n,
+            "death_rate": sum(r["dead"] for r in res) / n}
 
 
 def train(cfg: TrainConfig, log=print):
