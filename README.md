@@ -418,6 +418,10 @@ SARSA v1 100,0 % / 193,9 / 1054 / 1553 ; v2 99,8 % / 207,6 / 1126 / 1645 ; v3 84
 
 ![Courbes SARSA v1](models/sarsa_v1_s42_6000ep/curves.png)
 
+**Récapitulatif complet** (tous les algorithmes, 5 graines, robustesse, coût,
+CodeCarbon) : [`docs/RESULTATS.md`](docs/RESULTATS.md), données dans
+[`docs/resultats_v3.csv`](docs/resultats_v3.csv).
+
 ### Notre DQN (étude étape par étape, v3, graines 42 et 43, 6000 épisodes)
 
 Chaque étape ajoute une seule amélioration (`python train.py --algo dqn

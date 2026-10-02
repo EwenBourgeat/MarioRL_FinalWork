@@ -11,7 +11,38 @@
   "max_steps": 1000,
   "eval_every": 100,
   "segments": null,
+  "obs": "paper",
+  "double": false,
+  "n_step": 1,
+  "grad_clip": null,
+  "tau": null,
+  "keep_best": false,
+  "cnn": false,
+  "device": "auto",
+  "threads": 1,
+  "buffer_size": 50000,
+  "lr": 0.0001,
+  "variant": null,
   "env": "MarioGrid-v0",
+  "robust": {
+    "episodes": 50,
+    "epsilon": 0.02,
+    "win_rate": 0.88,
+    "avg_return": 229.65200000000033,
+    "death_rate": 0.12
+  },
+  "carbon": {
+    "energy_kwh": 0.0008536056481236171,
+    "co2_g": 0.04783520691519938,
+    "cpu_kwh": 0.0003960577015486176,
+    "gpu_kwh": 0.0,
+    "ram_kwh": 0.00045754794657499963,
+    "duration_s": 164.72309231099985,
+    "country": "FRA",
+    "seeds_in_run": 5,
+    "note": "mesure de toute la machine pour le run entier (toutes les graines en parallèle)"
+  },
+  "best_episode": null,
   "reward": "paper",
   "metrics": {
     "episodes": 6000,
@@ -42,9 +73,9 @@
     "enemies": 11,
     "jumps": 48
   },
-  "train_seconds": 49.79,
+  "train_seconds": 76.57,
   "name": "montecarlo_v3_s42_6000ep",
-  "created": "2026-10-01T14:55:07",
+  "created": "2026-10-02T15:07:29",
   "label": "MONTECARLO V3 S42 6000",
   "tests": [
     {
