@@ -59,7 +59,7 @@ probablement plus faciles à écraser, ce qui gonfle aussi le retour.
 | DQN étape 1 | Mac M4 | 2 graines × 2 threads | 7,3 min | 0,83 Wh | 0,047 g | réseau 319 363 poids |
 | DQN étape 2 | Mac M4 | 2 graines × 2 threads | 9,1 min | 1,06 Wh | 0,059 g | réseau 319 363 poids |
 | DQN étape 3 (CNN) | Legion (RTX 3060) | 2 graines, carte graphique | 51 min | 42,6 Wh | 2,4 g | réseau 1 629 475 poids |
-| Notre DQN étape 4 | Mac M4 | 5 graines × 2 threads | 28 min * | 3,2 Wh * | 0,18 g * | réseau 319 363 poids |
+| Notre DQN étape 4 | Mac M4 | 5 graines × 1 thread | 24 min * | 2,4 Wh * | 0,14 g * | réseau 319 363 poids |
 
 Électricité française (≈ 56 g de CO₂ par kWh). CodeCarbon mesure toute la
 machine pendant tout le lancement ; on divise par le nombre de graines. Sur
@@ -68,13 +68,26 @@ de capteur lu) ; comme tout a été fait sur le même Mac, la comparaison entre
 algorithmes reste juste. L'étape 3 vient d'une autre machine : ordre de
 grandeur seulement.
 
-\* **Mesure faussée par la surcharge du Mac.** 5 graines × 2 threads = 10
-calculs en même temps pour 10 cœurs (dont 6 cœurs lents), sur un Mac sans
-ventilateur : chaque graine a mis 28 min au lieu de 8,5 min. Le même calcul
-lancé en 2 graines × 2 threads (graines 42 et 43, modèles identiques au bit
-près) avait coûté **0,94 Wh par graine**, comme l'étape 1. C'est l'ordre de
-grandeur réel ; un nouveau lancement avec 1 thread par graine (comme les
-autres lancements à 5 graines) donnera la mesure propre.
+\* **Pourquoi l'étape 4 coûte plus que l'étape 1 alors que le réseau a la même
+taille ?** Très probablement à cause de la mémoire. Chaque graine de l'étape 4 garde 100 000
+souvenirs de l'écran complet, soit environ 1,9 Go (0,9 Go pour les étapes 1
+et 2). Avec 5 graines en même temps, il faut environ 9,4 Go rien que pour ces
+souvenirs, et le Mac ralentit. Les 4 lancements de l'étape 4 faits sur le Mac
+le montrent :
+
+| Lancement de l'étape 4 | Mémoire de rejeu | Durée par graine | Graines finies par heure | Énergie par graine |
+|---|---|---|---|---|
+| 2 graines × 2 threads | 3,8 Go | 8,5 min | 14 | 0,94 Wh |
+| 3 graines × 3 threads | 5,7 Go | 14 min | 13 | 1,38 Wh |
+| 5 graines × 2 threads | 9,4 Go | 28 min | 11 | 3,21 Wh |
+| **5 graines × 1 thread (retenu)** | 9,4 Go | 24 min | 12 | **2,43 Wh** |
+
+Au total, le Mac ne finit jamais plus d'environ 12 graines par heure : lancer
+plus de graines en même temps n'accélère rien, ça occupe seulement plus de
+cœurs qui attendent la mémoire, et CodeCarbon compte ces cœurs occupés. Le
+tableau garde le lancement à 5 graines × 1 thread, le même protocole que les
+autres modèles à 5 graines. Lancée 2 graines à la fois, comme les étapes 1
+et 2, l'étape 4 coûte 0,94 Wh par graine.
 
 Vitesse du Mac M4 par rapport au cloud (même calcul) : environ 2,5 fois plus
 rapide pour les tableaux et le petit DQN, environ 9 fois pour les gros DQN
@@ -101,8 +114,10 @@ Sur les 5 graines (42 à 46), l'étape 4 donne 93,7 ± 1,4 % de victoires et
 Les DQN refaits sur le Mac ne donnent pas exactement les mêmes chiffres que
 dans le cloud (étape 0 : 37,1 → 44,2 % ; étape 1 : 81,1 → 81,8 % ; étape 2 :
 80,6 → 78,2 %) : les calculs d'un réseau de neurones ne tombent pas
-identiques au bit près d'un processeur à l'autre, ni quand on change le
-nombre de threads, et DQN amplifie ces petites différences. Les conclusions
+identiques au bit près d'un processeur à l'autre, ni parfois quand on change
+le nombre de threads (étape 4 : 1 ou 2 threads donnent exactement le même
+modèle, 3 threads un modèle un peu différent), et DQN amplifie ces petites
+différences. Les conclusions
 ne changent pas. Les méthodes à tableau, elles, donnent exactement les mêmes
 résultats sur les deux machines.
 
@@ -135,5 +150,7 @@ Monte Carlo v1/v2 non entraîné (article : 99,1 % et 99,9 %).
    50 fois plus d'énergie par graine que l'étape 1 sur le Mac, pour un moins
    bon résultat.
 5. **Mesurer l'énergie demande un protocole** : même machine, même façon de
-   lancer. Trop de calculs en même temps sur le Mac a rendu chaque graine de
-   l'étape 4 trois fois plus lente et trois fois plus coûteuse.
+   lancer. Notre DQN garde 1,9 Go de souvenirs par graine : en lancer 5 à la
+   fois sur le Mac ne va pas plus vite au total et coûte 2,4 Wh par graine,
+   contre 0,94 Wh en les lançant 2 par 2. DQN coûte aussi en mémoire, pas
+   seulement en calcul.
