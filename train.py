@@ -68,6 +68,9 @@ def build_parser():
                    help="où calculer (auto = carte NVIDIA si présente)")
     p.add_argument("--threads", type=int, default=1,
                    help="cœurs du processeur par graine (défaut 1)")
+    p.add_argument("--carbon", action="store_true",
+                   help="mesurer l'énergie et le CO2 avec CodeCarbon "
+                        "(pip install codecarbon)")
     p.add_argument("--no-robust", action="store_true",
                    help="ne pas faire le test de robustesse final")
     p.add_argument("--segments", default=None,
@@ -115,6 +118,20 @@ def main(argv=None):
           f"graines {', '.join(map(str, args.seeds))} | alpha={alpha_txt} "
           f"gamma={args.gamma} | ε {args.eps_start} -> x{args.eps_decay} "
           f"-> {args.eps_min}", flush=True)
+    tracker = None
+    if args.carbon:
+        # CodeCarbon mesure toute la machine PENDANT l'entraînement
+        # (processeur, carte graphique NVIDIA, mémoire), puis convertit
+        # en CO2 avec l'intensité carbone de l'électricité française
+        try:
+            from codecarbon import OfflineEmissionsTracker
+        except ImportError:
+            sys.exit("CodeCarbon manquant : pip install codecarbon")
+        os.makedirs("runs", exist_ok=True)
+        tracker = OfflineEmissionsTracker(
+            country_iso_code="FRA", output_dir="runs", log_level="error",
+            project_name=f"{args.algo}_{args.level}_{args.variant or ''}")
+        tracker.start()
     t0 = time.perf_counter()
     workers = args.workers or min(len(configs), os.cpu_count() or 1)
     if workers <= 1:
@@ -123,6 +140,19 @@ def main(argv=None):
         with ProcessPoolExecutor(max_workers=workers) as pool:
             results = list(pool.map(run_seed, configs))
 
+    carbon = None
+    if tracker is not None:
+        tracker.stop()
+        d = tracker.final_emissions_data
+        carbon = {"energy_kwh": d.energy_consumed, "co2_g": d.emissions * 1000,
+                  "cpu_kwh": d.cpu_energy, "gpu_kwh": d.gpu_energy,
+                  "ram_kwh": d.ram_energy, "duration_s": d.duration,
+                  "country": "FRA", "seeds_in_run": len(configs),
+                  "note": "mesure de toute la machine pour le run entier "
+                          "(toutes les graines en parallèle)"}
+        print(f"\nCodeCarbon : {carbon["energy_kwh"]*1000:.3f} Wh, "
+              f"{carbon["co2_g"]:.3f} g de CO2 pour tout le run "
+              f"({len(configs)} graine(s), {carbon['duration_s']/60:.1f} min)")
     all_metrics = []
     for cfg, agent, history, tests, final, seconds in results:
         m = article_metrics(history)
@@ -140,7 +170,7 @@ def main(argv=None):
                   f"{robust['avg_return']:.1f})")
         if args.no_save:
             continue
-        meta = dict(cfg, env="MarioGrid-v0", robust=robust,
+        meta = dict(cfg, env="MarioGrid-v0", robust=robust, carbon=carbon,
                     best_episode=getattr(agent, "best_episode", None),
                     reward="paper", metrics=m, greedy=final,
                     train_seconds=round(seconds, 2))
