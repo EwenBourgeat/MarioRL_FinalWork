@@ -147,7 +147,7 @@ class DQNAgent:
         self.updates += 1
         if self.updates % self.target_every == 0:
             self.target.load_state_dict(self.net.state_dict())
-        return float(loss)
+        return loss.item()
 
     # ------------------------------------------------------------------
     def save(self, path):
