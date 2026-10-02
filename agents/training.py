@@ -72,6 +72,8 @@ class TrainConfig:
     cnn: bool = False              # 3 : réseau à loupes (vue complète)
     device: str = "auto"           # auto / cpu / cuda / mps
     threads: int = 1               # cœurs du processeur par graine
+    buffer_size: int = 50_000      # DQN : taille de la mémoire de replay
+    lr: float = 1e-4               # DQN : vitesse d'apprentissage (Adam)
     variant: Optional[str] = None  # étiquette de l'expérience (ex. "E1")
     log_every: int = 500
 
@@ -229,7 +231,8 @@ def train(cfg: TrainConfig, log=print):
         agent = cls(env.observation_space.nvec - 1, env.action_space.n,
                     cfg.gamma, cfg.seed, double=cfg.double,
                     n_step=cfg.n_step, grad_clip=cfg.grad_clip, tau=cfg.tau,
-                    cnn=cfg.cnn, device=cfg.device)
+                    cnn=cfg.cnn, device=cfg.device, lr=cfg.lr,
+                    buffer_size=cfg.buffer_size)
         if log:
             log(f"[graine {cfg.seed}] calcul sur : {agent.device}")
     else:

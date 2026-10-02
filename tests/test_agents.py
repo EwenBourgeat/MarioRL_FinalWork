@@ -323,3 +323,15 @@ def test_run_seed_returns_dqn_on_cpu_without_memory():
     assert all(p.device.type == "cpu" for p in agent.net.parameters())
     assert any(p.abs().sum() > 0 for p in agent.net.parameters())
     assert greedy_test(make_env(TrainConfig(**cfg)), agent, 6) == final
+
+
+def test_dqn_buffer_size_and_lr_options():
+    pytest.importorskip("torch")
+    from agents.training import train
+
+    cfg = TrainConfig(algo="dqn", level="v1", episodes=2, seed=7,
+                      eval_every=0, log_every=0, alpha=None, eps_min=0.02,
+                      buffer_size=1234, lr=3e-4, device="cpu")
+    agent, *_ = train(cfg, log=None)
+    assert agent.memory.capacity == 1234
+    assert agent.opt.param_groups[0]["lr"] == pytest.approx(3e-4)

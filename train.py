@@ -68,6 +68,10 @@ def build_parser():
                    help="où calculer (auto = carte NVIDIA si présente)")
     p.add_argument("--threads", type=int, default=1,
                    help="cœurs du processeur par graine (défaut 1)")
+    p.add_argument("--buffer-size", type=int, default=d.buffer_size,
+                   help="DQN : taille de la mémoire de replay (défaut 50000)")
+    p.add_argument("--lr", type=float, default=d.lr,
+                   help="DQN : vitesse d'apprentissage (défaut 0.0001)")
     p.add_argument("--carbon", action="store_true",
                    help="mesurer l'énergie et le CO2 avec CodeCarbon "
                         "(pip install codecarbon)")
@@ -102,14 +106,15 @@ def main(argv=None):
                            grad_clip=args.grad_clip, tau=args.tau,
                            keep_best=args.keep_best, cnn=args.cnn,
                            device=args.device, threads=args.threads,
+                           buffer_size=args.buffer_size, lr=args.lr,
                            log_every=args.log_every).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
         # Monte Carlo n'a pas d'alpha : chaque note est une moyenne (1/N)
         for c in configs:
             c["alpha"] = None
-    alpha_txt = {"montecarlo": "1/N", "dqn": "lr 0.0001 (Adam)"}.get(
-        args.algo, args.alpha)
+    alpha_txt = {"montecarlo": "1/N", "dqn": f"lr {args.lr:g} (Adam), "
+                 f"mémoire {args.buffer_size}"}.get(args.algo, args.alpha)
     if args.algo == "dqn":
         for c in configs:
             c["alpha"] = None
