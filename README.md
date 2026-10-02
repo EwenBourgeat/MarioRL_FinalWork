@@ -428,6 +428,7 @@ Chaque étape ajoute une seule amélioration (`python train.py --algo dqn
 |---|---|---|---|---|---|
 | 0 | DQN de l'article (vue de l'article) | 37,1 % | 5284 | jamais | 44 % / 82 % |
 | 1 | + vue complète (`--obs full`) | 81,1 ± 1,8 % | 2004 | 2837 | 94 % / 92 % |
+| 2 | + Double DQN, 3 pas, limitation, cible douce, meilleure version | 80,6 ± 4,0 % | 2648 | 3194 | 92 % / 86 % |
 
 ### Utiliser l'agent dans son propre code
 
