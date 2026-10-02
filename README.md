@@ -430,6 +430,14 @@ Chaque étape ajoute une seule amélioration (`python train.py --algo dqn
 | 1 | + vue complète (`--obs full`) | 81,1 ± 1,8 % | 2004 | 2837 | 94 % / 92 % |
 | 2 | + Double DQN, 3 pas, limitation, cible douce, meilleure version | 80,6 ± 4,0 % | 2648 | 3194 | 92 % / 86 % |
 
+Étape 3 (CNN, à lancer sur une machine avec carte graphique, voir
+`--device`) :
+
+```bash
+python train.py --algo dqn --level v3 --episodes 6000 --seeds 42 43 \
+    --obs full --cnn --grad-clip 10 --keep-best --variant E3 --device auto
+```
+
 ### Utiliser l'agent dans son propre code
 
 ```python

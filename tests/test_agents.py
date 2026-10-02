@@ -277,3 +277,33 @@ def test_dqn_step2_train_save_load(tmp_path):
     path = save_model(a1, meta, h1, [], root=tmp_path)
     back = load_agent(path)
     assert greedy_test(make_env(cfg), back, cfg.seed) == g1
+
+
+# ----------------------------------------------------------------------
+# Notre DQN, étape 3 : CNN
+# ----------------------------------------------------------------------
+def test_cnn_network_shapes_and_requires_full_view():
+    torch = pytest.importorskip("torch")
+    from agents.dqn import CNNQNet
+
+    net = CNNQNet(6 * 14 * 28 + 10, 3)
+    assert net(torch.zeros(5, 6 * 14 * 28 + 10)).shape == (5, 3)
+    with pytest.raises(ValueError):
+        CNNQNet(115, 3)                  # vue de l'article : refusée
+
+
+def test_dqn_cnn_train_save_load(tmp_path):
+    pytest.importorskip("torch")
+    from agents.training import train
+
+    cfg = TrainConfig(algo="dqn", level="v3", episodes=6, seed=5,
+                      eval_every=3, log_every=0, alpha=None, eps_min=0.05,
+                      obs="full", cnn=True, grad_clip=10.0, keep_best=True,
+                      device="cpu", variant="E3")
+    a1, h1, _, g1, _ = train(cfg, log=None)
+    meta = dict(cfg.as_dict(), metrics=article_metrics(h1), greedy=g1)
+    path = save_model(a1, meta, h1, [], root=tmp_path)
+    back = load_agent(path)
+    assert back.cnn
+    obs = make_env(cfg).reset()[0]
+    assert np.allclose(back.q_values(obs), a1.q_values(obs), atol=1e-6)

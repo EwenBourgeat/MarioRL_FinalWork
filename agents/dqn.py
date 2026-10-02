@@ -65,10 +65,56 @@ class ReplayMemory:
                 self.done[idx], self.disc[idx])
 
 
-def make_network(n_inputs, n_actions, hidden=128):
+def make_network(n_inputs, n_actions, hidden=128, cnn=False):
+    if cnn:
+        return CNNQNet(n_inputs, n_actions)
     return nn.Sequential(nn.Linear(n_inputs, hidden), nn.ReLU(),
                          nn.Linear(hidden, hidden), nn.ReLU(),
                          nn.Linear(hidden, n_actions))
+
+
+class CNNQNet(nn.Module):
+    """Réseau « à loupes » (étape 3) pour la vue complète.
+
+    La vue (6 calques x 14 lignes x 28 colonnes) est traitée comme une
+    image :
+    * 32 loupes 3 x 3 repèrent des formes simples (bord de trou, Goomba...) ;
+    * 64 loupes 3 x 3 combinent ces formes ; elles sautent une case sur deux
+      (stride 2) : l'image passe à 7 x 14, sinon le réseau serait énorme ;
+    * 256 neurones décident, avec en plus l'étape du saut et le rythme des
+      ennemis (les 10 derniers nombres de la vue), puis 3 notes.
+    """
+
+    CHANNELS, ROWS, COLS = 6, 14, 28
+
+    def __init__(self, n_inputs, n_actions):
+        super().__init__()
+        self.grid = self.CHANNELS * self.ROWS * self.COLS
+        self.extra = n_inputs - self.grid
+        if self.extra < 0:
+            raise ValueError("le CNN demande la vue complète (--obs full)")
+        self.conv = nn.Sequential(
+            nn.Conv2d(self.CHANNELS, 32, 3, padding=1), nn.ReLU(),
+            nn.Conv2d(32, 64, 3, stride=2, padding=1), nn.ReLU(),
+            nn.Flatten())
+        n_conv = 64 * ((self.ROWS + 1) // 2) * ((self.COLS + 1) // 2)
+        self.head = nn.Sequential(
+            nn.Linear(n_conv + self.extra, 256), nn.ReLU(),
+            nn.Linear(256, n_actions))
+
+    def forward(self, x):
+        img = x[:, :self.grid].reshape(-1, self.CHANNELS, self.ROWS,
+                                       self.COLS)
+        feats = self.conv(img)
+        return self.head(torch.cat([feats, x[:, self.grid:]], dim=1))
+
+
+def pick_device(name="auto"):
+    """Où calculer : carte graphique NVIDIA (cuda), puce Apple (mps), ou
+    processeur (cpu).  « auto » prend cuda si elle existe, sinon cpu."""
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(name)
 
 
 class DQNAgent:
@@ -77,7 +123,8 @@ class DQNAgent:
     def __init__(self, obs_high, n_actions=3, gamma=0.99, seed=42, lr=1e-4,
                  buffer_size=50_000, batch_size=64, train_every=4,
                  target_every=500, learning_starts=1000, hidden=128,
-                 double=False, n_step=1, grad_clip=None, tau=None):
+                 double=False, n_step=1, grad_clip=None, tau=None,
+                 cnn=False, device="cpu"):
         torch.manual_seed(seed)
         self.n_actions = int(n_actions)
         self.gamma = float(gamma)
@@ -97,8 +144,11 @@ class DQNAgent:
         # pour ramener chaque nombre observé entre 0 et 1
         self.obs_high = np.maximum(np.asarray(obs_high, dtype=np.float32), 1)
         n_in = len(self.obs_high)
-        self.net = make_network(n_in, n_actions, hidden)
-        self.target = make_network(n_in, n_actions, hidden)
+        self.cnn = bool(cnn)            # 3 : réseau à loupes
+        self.device = pick_device(device)
+        self.net = make_network(n_in, n_actions, hidden, cnn).to(self.device)
+        self.target = make_network(n_in, n_actions, hidden,
+                                   cnn).to(self.device)
         self.target.load_state_dict(self.net.state_dict())
         self.opt = torch.optim.Adam(self.net.parameters(), lr=lr)
         self.loss_fn = nn.SmoothL1Loss()                    # erreur de Huber
@@ -115,7 +165,7 @@ class DQNAgent:
     def q_values(self, obs):
         with torch.no_grad():
             x = torch.from_numpy(self.normalize(obs)).unsqueeze(0)
-            return self.net(x)[0].numpy()
+            return self.net(x.to(self.device))[0].cpu().numpy()
 
     def best_action(self, state, rng=None):
         """Action la mieux notée par le réseau (``state`` = tuple ou tableau)."""
@@ -168,7 +218,8 @@ class DQNAgent:
         self.memory.add(s, a, total, s2n, terminated, g)
 
     def learn(self):
-        s, a, r, s2, done, disc = (torch.from_numpy(x) for x in
+        s, a, r, s2, done, disc = (torch.from_numpy(x).to(self.device)
+                                   for x in
                                    self.memory.sample(self.batch_size))
         q = self.net(s).gather(1, a.unsqueeze(1)).squeeze(1)
         with torch.no_grad():
@@ -220,7 +271,9 @@ class DQNAgent:
     def save(self, path):
         # uniquement des types Python simples : le fichier se recharge en
         # mode sûr (weights_only), sans exécuter de code
-        torch.save({"net": self.net.state_dict(),
+        torch.save({"net": {k: v.cpu() for k, v in
+                            self.net.state_dict().items()},
+                    "cnn": bool(self.cnn),
                     "obs_high": [float(x) for x in self.obs_high],
                     "n_actions": int(self.n_actions),
                     "gamma": float(self.gamma), "hidden": int(self.hidden),
@@ -230,7 +283,8 @@ class DQNAgent:
     def load(cls, path, seed=0):
         data = torch.load(path, map_location="cpu", weights_only=True)
         agent = cls(data["obs_high"], data["n_actions"], data["gamma"], seed,
-                    lr=data["lr"], hidden=data["hidden"], buffer_size=1)
+                    lr=data["lr"], hidden=data["hidden"], buffer_size=1,
+                    cnn=data.get("cnn", False), device="cpu")
         agent.net.load_state_dict(data["net"])
         agent.target.load_state_dict(data["net"])
         agent.net.eval()

@@ -61,6 +61,13 @@ def build_parser():
                    help="DQN : cible douce (étape 2d, ex. 0.005)")
     p.add_argument("--keep-best", action="store_true",
                    help="garder la meilleure version (étape 2e)")
+    p.add_argument("--cnn", action="store_true",
+                   help="DQN : réseau à loupes (étape 3, avec --obs full)")
+    p.add_argument("--device", default="auto",
+                   choices=["auto", "cpu", "cuda", "mps"],
+                   help="où calculer (auto = carte NVIDIA si présente)")
+    p.add_argument("--threads", type=int, default=1,
+                   help="cœurs du processeur par graine (défaut 1)")
     p.add_argument("--no-robust", action="store_true",
                    help="ne pas faire le test de robustesse final")
     p.add_argument("--segments", default=None,
@@ -90,7 +97,8 @@ def main(argv=None):
                            obs=args.obs, variant=args.variant,
                            double=args.double, n_step=args.n_step,
                            grad_clip=args.grad_clip, tau=args.tau,
-                           keep_best=args.keep_best,
+                           keep_best=args.keep_best, cnn=args.cnn,
+                           device=args.device, threads=args.threads,
                            log_every=args.log_every).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":

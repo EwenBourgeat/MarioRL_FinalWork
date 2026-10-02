@@ -69,6 +69,9 @@ class TrainConfig:
     grad_clip: Optional[float] = None  # 2c : taille max d'une correction
     tau: Optional[float] = None    # 2d : cible douce (ex. 0.005)
     keep_best: bool = False        # 2e : garder la meilleure version
+    cnn: bool = False              # 3 : réseau à loupes (vue complète)
+    device: str = "auto"           # auto / cpu / cuda / mps
+    threads: int = 1               # cœurs du processeur par graine
     variant: Optional[str] = None  # étiquette de l'expérience (ex. "E1")
     log_every: int = 500
 
@@ -222,10 +225,13 @@ def train(cfg: TrainConfig, log=print):
     env.reset(seed=cfg.seed)
     if cfg.algo == "dqn":
         import torch
-        torch.set_num_threads(1)        # petit réseau : 1 cœur suffit
+        torch.set_num_threads(cfg.threads)   # cœurs du processeur
         agent = cls(env.observation_space.nvec - 1, env.action_space.n,
                     cfg.gamma, cfg.seed, double=cfg.double,
-                    n_step=cfg.n_step, grad_clip=cfg.grad_clip, tau=cfg.tau)
+                    n_step=cfg.n_step, grad_clip=cfg.grad_clip, tau=cfg.tau,
+                    cnn=cfg.cnn, device=cfg.device)
+        if log:
+            log(f"[graine {cfg.seed}] calcul sur : {agent.device}")
     else:
         agent = cls(env.action_space.n, cfg.alpha, cfg.gamma, cfg.seed)
     history = {k: [] for k in HISTORY_FIELDS}
@@ -256,11 +262,13 @@ def train(cfg: TrainConfig, log=print):
             test = greedy_test(env, agent, cfg.seed)
             tests.append({"episode": ep, **test})
             if cfg.keep_best and test["win"]:
-                # 2e. version candidate : mini-test de robustesse sur
-                # d'AUTRES parties que le test final (graine différente)
+                # 2e. version candidate : mini-test de robustesse (30
+                # parties) sur d'AUTRES parties que le test final (graine
+                # différente).  À score égal, on garde la plus RÉCENTE
+                # (>=) : elle a appris plus longtemps.
                 mini = robustness_test(env, agent, cfg.seed + 500,
-                                       episodes=10)
-                score = (mini["win_rate"], test["return"])
+                                       episodes=30)
+                score = (mini["win_rate"],)
                 if best is None or score >= best[0]:
                     best = (score, ep, agent.snapshot())
         if log and cfg.log_every and ep % cfg.log_every == 0:
