@@ -63,6 +63,12 @@ class TrainConfig:
     eval_every: int = 100          # un test glouton tous les N épisodes
     segments: Optional[str] = None  # ordre des segments A-F (None = normal)
     obs: str = "paper"             # "paper" (article) ou "full" (vue complète)
+    # --- notre DQN, étape 2 (désactivé par défaut = DQN de l'article) ---
+    double: bool = False           # 2a : Double DQN
+    n_step: int = 1                # 2b : récompenses sur n pas
+    grad_clip: Optional[float] = None  # 2c : taille max d'une correction
+    tau: Optional[float] = None    # 2d : cible douce (ex. 0.005)
+    keep_best: bool = False        # 2e : garder la meilleure version
     variant: Optional[str] = None  # étiquette de l'expérience (ex. "E1")
     log_every: int = 500
 
@@ -156,7 +162,7 @@ def play_dqn_episode(env, agent, epsilon):
     while True:
         a = agent.act(obs, epsilon)
         obs2, r, terminated, truncated, info = env.step(a)
-        agent.observe(obs, a, r, obs2, terminated)
+        agent.observe(obs, a, r, obs2, terminated, terminated or truncated)
         total += r
         if info["col"] > max_col:
             max_col = info["col"]
@@ -218,11 +224,13 @@ def train(cfg: TrainConfig, log=print):
         import torch
         torch.set_num_threads(1)        # petit réseau : 1 cœur suffit
         agent = cls(env.observation_space.nvec - 1, env.action_space.n,
-                    cfg.gamma, cfg.seed)
+                    cfg.gamma, cfg.seed, double=cfg.double,
+                    n_step=cfg.n_step, grad_clip=cfg.grad_clip, tau=cfg.tau)
     else:
         agent = cls(env.action_space.n, cfg.alpha, cfg.gamma, cfg.seed)
     history = {k: [] for k in HISTORY_FIELDS}
     tests = []
+    best = None                         # (score, épisode, copie)
     eps = cfg.eps_start
     t0 = time.perf_counter()
 
@@ -245,7 +253,16 @@ def train(cfg: TrainConfig, log=print):
         eps = max(cfg.eps_min, eps * cfg.eps_decay)
 
         if cfg.eval_every and ep % cfg.eval_every == 0:
-            tests.append({"episode": ep, **greedy_test(env, agent, cfg.seed)})
+            test = greedy_test(env, agent, cfg.seed)
+            tests.append({"episode": ep, **test})
+            if cfg.keep_best and test["win"]:
+                # 2e. version candidate : mini-test de robustesse sur
+                # d'AUTRES parties que le test final (graine différente)
+                mini = robustness_test(env, agent, cfg.seed + 500,
+                                       episodes=10)
+                score = (mini["win_rate"], test["return"])
+                if best is None or score >= best[0]:
+                    best = (score, ep, agent.snapshot())
         if log and cfg.log_every and ep % cfg.log_every == 0:
             n = min(100, ep)
             wins = sum(history["win"][-n:]) / n
@@ -257,6 +274,12 @@ def train(cfg: TrainConfig, log=print):
                 f"{table_size(agent):>7} | "
                 f"{time.perf_counter() - t0:6.1f} s")
 
+    if cfg.keep_best and best is not None:
+        agent.restore(best[2])           # on recharge la meilleure version
+        agent.best_episode = best[1]
+        if log:
+            log(f"[graine {cfg.seed}] meilleure version gardée : épisode "
+                f"{best[1]} (mini-test {best[0][0]:.0%})")
     final = greedy_test(env, agent, cfg.seed)
     seconds = time.perf_counter() - t0
     return agent, history, tests, final, seconds

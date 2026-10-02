@@ -109,6 +109,19 @@ class QLearningAgent:
         return error
 
     # ------------------------------------------------------------------
+    # Copie de l'agent (pour « garder la meilleure version »)
+    # ------------------------------------------------------------------
+    def snapshot(self):
+        import copy
+        return copy.deepcopy({k: v for k, v in vars(self).items()
+                              if k in ("q", "n")})
+
+    def restore(self, snap):
+        import copy
+        for k, v in copy.deepcopy(snap).items():
+            setattr(self, k, v)
+
+    # ------------------------------------------------------------------
     # Sauvegarde (format numpy compressé, sans pickle)
     # ------------------------------------------------------------------
     def to_arrays(self):

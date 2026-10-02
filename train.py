@@ -51,6 +51,16 @@ def build_parser():
                         "complète, notre DQN)")
     p.add_argument("--variant", default=None,
                    help="étiquette de l'expérience, ex. E1 (ajoutée au nom)")
+    p.add_argument("--double", action="store_true",
+                   help="DQN : Double DQN (étape 2a)")
+    p.add_argument("--n-step", type=int, default=d.n_step,
+                   help="DQN : récompenses sur n pas (étape 2b, ex. 3)")
+    p.add_argument("--grad-clip", type=float, default=None,
+                   help="DQN : taille max d'une correction (étape 2c, ex. 10)")
+    p.add_argument("--tau", type=float, default=None,
+                   help="DQN : cible douce (étape 2d, ex. 0.005)")
+    p.add_argument("--keep-best", action="store_true",
+                   help="garder la meilleure version (étape 2e)")
     p.add_argument("--no-robust", action="store_true",
                    help="ne pas faire le test de robustesse final")
     p.add_argument("--segments", default=None,
@@ -78,6 +88,9 @@ def main(argv=None):
                            eps_min=args.eps_min, max_steps=args.max_steps,
                            eval_every=args.eval_every, segments=args.segments,
                            obs=args.obs, variant=args.variant,
+                           double=args.double, n_step=args.n_step,
+                           grad_clip=args.grad_clip, tau=args.tau,
+                           keep_best=args.keep_best,
                            log_every=args.log_every).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
@@ -120,6 +133,7 @@ def main(argv=None):
         if args.no_save:
             continue
         meta = dict(cfg, env="MarioGrid-v0", robust=robust,
+                    best_episode=getattr(agent, "best_episode", None),
                     reward="paper", metrics=m, greedy=final,
                     train_seconds=round(seconds, 2))
         meta.pop("log_every", None)

@@ -211,3 +211,69 @@ def test_dqn_full_view_variant_and_robustness(tmp_path):
     assert greedy_test(env, back, cfg.seed) == g
     r = robustness_test(env, back, cfg.seed, episodes=3)
     assert r["episodes"] == 3 and 0 <= r["win_rate"] <= 1
+
+
+# ----------------------------------------------------------------------
+# Notre DQN, étape 2
+# ----------------------------------------------------------------------
+def test_dqn_n_step_returns():
+    pytest.importorskip("torch")
+    from agents.dqn import DQNAgent
+
+    ag = DQNAgent(np.ones(2), gamma=0.5, n_step=3)
+    o = np.zeros(2)
+    for r, end in [(1, False), (2, False), (3, False), (4, True)]:
+        ag.observe(o, 0, r, o, end, end)
+    m = ag.memory
+    # 1 + .5*2 + .25*3 ; puis, en fin de partie : 2+.5*3+.25*4, 3+.5*4, 4
+    assert m.r[:m.size].tolist() == [2.75, 4.5, 5.0, 4.0]
+    assert m.done[:m.size].tolist() == [0, 1, 1, 1]
+    assert m.disc[0] == pytest.approx(0.125)        # gamma^3
+
+
+def test_dqn_soft_target_and_options_learn():
+    torch = pytest.importorskip("torch")
+    from agents.dqn import DQNAgent
+
+    ag = DQNAgent(np.ones(4), learning_starts=8, batch_size=8, double=True,
+                  n_step=3, grad_clip=10, tau=0.005)
+    rng = np.random.default_rng(0)
+    for i in range(40):
+        o = rng.integers(0, 2, 4)
+        ag.observe(o, i % 3, 1.0, o, i % 10 == 9, i % 10 == 9)
+    before = ag.target[0].weight.detach().clone()
+    gap = (ag.net[0].weight - before).detach()
+    ag.learn()
+    moved = (ag.target[0].weight - before).detach()
+    # la cible a fait 0,5 % du chemin vers le réseau (après sa correction)
+    gap2 = (ag.net[0].weight.detach() - before)
+    assert torch.allclose(moved, 0.005 * gap2, atol=1e-7)
+    assert gap.abs().max() > 0
+
+
+def test_keep_best_restores_best_version():
+    from agents.training import train
+
+    cfg = TrainConfig(level="v1", episodes=400, seed=3, eval_every=50,
+                      log_every=0, keep_best=True)
+    agent, h, tests, final, _ = train(cfg, log=None)
+    if any(t["win"] for t in tests):
+        assert final["win"] == 1
+        assert agent.best_episode in [t["episode"] for t in tests if t["win"]]
+
+
+def test_dqn_step2_train_save_load(tmp_path):
+    pytest.importorskip("torch")
+    from agents.training import train
+
+    cfg = TrainConfig(algo="dqn", level="v1", episodes=20, seed=4,
+                      eval_every=10, log_every=0, alpha=None, eps_min=0.05,
+                      double=True, n_step=3, grad_clip=10.0, tau=0.005,
+                      keep_best=True, variant="E2")
+    a1, h1, _, g1, _ = train(cfg, log=None)
+    a2, h2, _, g2, _ = train(cfg, log=None)
+    assert h1 == h2 and g1 == g2                     # reproductible
+    meta = dict(cfg.as_dict(), metrics=article_metrics(h1), greedy=g1)
+    path = save_model(a1, meta, h1, [], root=tmp_path)
+    back = load_agent(path)
+    assert greedy_test(make_env(cfg), back, cfg.seed) == g1
