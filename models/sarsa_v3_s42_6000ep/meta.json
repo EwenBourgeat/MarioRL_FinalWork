@@ -28,16 +28,16 @@
     "episodes": 50,
     "epsilon": 0.02,
     "win_rate": 0.88,
-    "avg_return": 232.3840000000001,
+    "avg_return": 232.38400000000004,
     "death_rate": 0.12
   },
   "carbon": {
-    "energy_kwh": 0.00039256629555486396,
-    "co2_g": 0.021999022636599024,
-    "cpu_kwh": 0.00018399163999375238,
+    "energy_kwh": 0.0001277893141053034,
+    "co2_g": 0.007161185373147099,
+    "cpu_kwh": 0.0001135345776128155,
     "gpu_kwh": 0.0,
-    "ram_kwh": 0.00020857465556111158,
-    "duration_s": 75.11236287199995,
+    "ram_kwh": 1.4254736492487913e-05,
+    "duration_s": 17.11696362499788,
     "country": "FRA",
     "seeds_in_run": 5,
     "note": "mesure de toute la machine pour le run entier (toutes les graines en parallèle)"
@@ -73,9 +73,9 @@
     "enemies": 9,
     "jumps": 25
   },
-  "train_seconds": 37.46,
+  "train_seconds": 16.24,
   "name": "sarsa_v3_s42_6000ep",
-  "created": "2026-10-02T15:04:34",
+  "created": "2026-10-02T18:58:34",
   "label": "SARSA V3 S42 6000",
   "tests": [
     {

@@ -28,16 +28,16 @@
     "episodes": 50,
     "epsilon": 0.02,
     "win_rate": 0.9,
-    "avg_return": 235.25199999999998,
+    "avg_return": 235.25200000000004,
     "death_rate": 0.1
   },
   "carbon": {
-    "energy_kwh": 0.00039886526582820725,
-    "co2_g": 0.02235201063174691,
-    "cpu_kwh": 0.00019073648655598517,
+    "energy_kwh": 0.00013790331419798017,
+    "co2_g": 0.007727963824340611,
+    "cpu_kwh": 0.00012373639398965652,
     "gpu_kwh": 0.0,
-    "ram_kwh": 0.00020812877927222202,
-    "duration_s": 75.00801374000002,
+    "ram_kwh": 1.4166920208323669e-05,
+    "duration_s": 17.01401108299615,
     "country": "FRA",
     "seeds_in_run": 5,
     "note": "mesure de toute la machine pour le run entier (toutes les graines en parallèle)"
@@ -73,9 +73,9 @@
     "enemies": 8,
     "jumps": 26
   },
-  "train_seconds": 39.68,
+  "train_seconds": 16.66,
   "name": "qlearning_v3_s42_6000ep",
-  "created": "2026-10-02T15:03:06",
+  "created": "2026-10-02T18:58:13",
   "label": "QLEARNING V3 S42 6000",
   "tests": [
     {

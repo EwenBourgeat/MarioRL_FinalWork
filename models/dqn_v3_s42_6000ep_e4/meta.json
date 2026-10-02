@@ -32,14 +32,14 @@
     "death_rate": 0.06
   },
   "carbon": {
-    "energy_kwh": 0.0018834709593907593,
-    "co2_g": 0.10554782909329875,
-    "cpu_kwh": 0.0014559954420999665,
+    "energy_kwh": 0.016055661718585214,
+    "co2_g": 0.8997432270477967,
+    "cpu_kwh": 0.014656684371252728,
     "gpu_kwh": 0.0,
-    "ram_kwh": 0.00042747551729079226,
-    "duration_s": 512.9757689170074,
+    "ram_kwh": 0.0013989773473324868,
+    "duration_s": 1678.845869375,
     "country": "FRA",
-    "seeds_in_run": 2,
+    "seeds_in_run": 5,
     "note": "mesure de toute la machine pour le run entier (toutes les graines en parallèle)"
   },
   "best_episode": 5200,
@@ -73,9 +73,9 @@
     "enemies": 13,
     "jumps": 24
   },
-  "train_seconds": 511.14,
+  "train_seconds": 1676.91,
   "name": "dqn_v3_s42_6000ep_e4",
-  "created": "2026-10-02T16:50:33",
+  "created": "2026-10-02T19:47:07",
   "label": "DQN V3 S42 6000",
   "tests": [
     {
