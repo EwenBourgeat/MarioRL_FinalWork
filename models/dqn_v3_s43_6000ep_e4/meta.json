@@ -19,7 +19,7 @@
   "keep_best": true,
   "cnn": false,
   "device": "cpu",
-  "threads": 2,
+  "threads": 1,
   "buffer_size": 100000,
   "lr": 0.0001,
   "variant": "E4",
@@ -32,12 +32,12 @@
     "death_rate": 0.06
   },
   "carbon": {
-    "energy_kwh": 0.016055661718585214,
-    "co2_g": 0.8997432270477967,
-    "cpu_kwh": 0.014656684371252728,
+    "energy_kwh": 0.012138920111382252,
+    "co2_g": 0.6802529441217501,
+    "cpu_kwh": 0.010922135092217304,
     "gpu_kwh": 0.0,
-    "ram_kwh": 0.0013989773473324868,
-    "duration_s": 1678.845869375,
+    "ram_kwh": 0.0012167850191649517,
+    "duration_s": 1460.2128802500083,
     "country": "FRA",
     "seeds_in_run": 5,
     "note": "mesure de toute la machine pour le run entier (toutes les graines en parallèle)"
@@ -73,9 +73,9 @@
     "enemies": 13,
     "jumps": 26
   },
-  "train_seconds": 1676.76,
+  "train_seconds": 1457.97,
   "name": "dqn_v3_s43_6000ep_e4",
-  "created": "2026-10-02T19:47:08",
+  "created": "2026-10-02T21:31:16",
   "label": "DQN V3 S43 6000",
   "tests": [
     {
