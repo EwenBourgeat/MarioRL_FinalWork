@@ -150,8 +150,8 @@ def main(argv=None):
                   "country": "FRA", "seeds_in_run": len(configs),
                   "note": "mesure de toute la machine pour le run entier "
                           "(toutes les graines en parallèle)"}
-        print(f"\nCodeCarbon : {carbon["energy_kwh"]*1000:.3f} Wh, "
-              f"{carbon["co2_g"]:.3f} g de CO2 pour tout le run "
+        print(f"\nCodeCarbon : {carbon['energy_kwh']*1000:.3f} Wh, "
+              f"{carbon['co2_g']:.3f} g de CO2 pour tout le run "
               f"({len(configs)} graine(s), {carbon['duration_s']/60:.1f} min)")
     all_metrics = []
     for cfg, agent, history, tests, final, seconds in results:
