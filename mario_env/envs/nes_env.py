@@ -233,8 +233,17 @@ class MarioNESEnv(gym.Env):
             "x_pos": info["x"], "y_pos": 240 - info["y"],
             "flag_get": g.level_complete, "life": g.lives, "world": 1,
             "stage": 1, "steps": self._steps,
+            "item_dist": self._item_dist(),
         })
         return info
+
+    def _item_dist(self):
+        """Distance (en cases) au champignon / à la fleur le plus proche."""
+        g = self.game
+        p = g.p
+        d = [abs(e.x - p.x) + abs((e.y + 16) - (p.y + 24))
+             for e in g.enemies if e.alive and e.kind in ("mushroom", "flower")]
+        return min(d) / C.TILE if d else None
 
     def _reward(self, prev, info, action):
         rc = self.reward_cfg
@@ -258,6 +267,9 @@ class MarioNESEnv(gym.Env):
         r += rc.one_up * d("one_ups")
         r += rc.bonus_room * d("bonus_room")
         r += rc.powerup_block * d("powerup_blocks")
+        if (rc.item_approach and info["item_dist"] is not None
+                and prev.get("item_dist") is not None):
+            r += rc.item_approach * (prev["item_dist"] - info["item_dist"])
         r += rc.score_scale * (info["score"] - prev["score"])
         r += rc.time_penalty * max(0, prev["time"] - info["time"])
         if info["dead"]:

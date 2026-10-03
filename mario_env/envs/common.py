@@ -76,6 +76,8 @@ class RewardConfig:
     one_up: float = 0.0
     bonus_room: float = 0.0          # entrée dans la salle bonus (tuyau)
     powerup_block: float = 0.0       # bloc ? power-up frappé (objet sorti)
+    item_approach: float = 0.0       # par case gagnée vers le champignon /
+                                     # la fleur visible (guidage)
     score_scale: float = 0.0         # multiplie la variation du score NES
     time_penalty: float = 0.0        # par seconde de chrono écoulée
     clip: Optional[Tuple[float, float]] = None
@@ -103,8 +105,12 @@ class RewardConfig:
             # route_a + champignon et fleur très motivés : +150 chacun, et
             # +25 pour frapper un bloc ? power-up (chaque bloc ne se frappe
             # qu'une fois) ; à utiliser avec le niveau « full_a »
+            # + guidage : +2 par case gagnée vers le champignon ou la fleur
+            # visible (-2 en s'en éloignant), sinon Mario fonce à droite et
+            # le champignon du bloc 21 passe derrière lui
             return cls(only_new_progress=True, coin=10.0, bonus_room=200.0,
-                       powerup=150.0, powerup_block=25.0, time_penalty=-0.5)
+                       powerup=150.0, powerup_block=25.0, time_penalty=-0.5,
+                       item_approach=2.0)
         if name == "score":
             return cls(progress_per_tile=0.0, stand_still=0.0, win=0.0,
                        death=0.0, brick=0.0, qblock=0.0, enemy=0.0,
