@@ -509,8 +509,16 @@ Le tuyau saute le milieu du niveau : la fleur (blocs 78 et 109), l'étoile et
 ```bash
 python train.py --algo ppo --level full --obs vector_plus --actions right_down \
     --reward route_a --ent-coef 0.01 --steps 5000000 --seeds 42 43 44 45 46 \
-    --carbon --variant routeA --log-steps 250000
+    --carbon --variant A --log-steps 250000
 ```
+
+Essai dans le cloud (2 millions de pas, graines 42 et 43) : 76 à 79 % de
+victoires, salle bonus dans 86 à 88 % des parties, 13 à 14 pièces par
+partie ; test glouton gagné **par la salle bonus** en 260-266 pas (15 et 17
+pièces). Le champignon n'est pas encore appris. Il a fallu trois
+corrections, chacune trouvée en regardant où Mario restait bloqué : la
+pénalité de temps, deux cases séparées pour les deux tuyaux, et les
+boutons du pas précédent dans la vue.
 
 Mesures en plus : pièces par partie, part des parties passées par la salle
 bonus, power-ups (dans l'entraînement, le test glouton et la robustesse).
