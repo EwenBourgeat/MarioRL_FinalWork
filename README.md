@@ -474,6 +474,11 @@ python train.py --algo ppo --level v3 --steps 3000000 --seeds 42 43 44 45 46 \
     --keep-best --carbon
 ```
 
+**Résultats** (v3, 3 millions de pas, 5 graines, Mac M4) : 81,4 ± 5,6 % de
+victoires sur les 500 dernières parties, test glouton gagné 5 fois sur 5
+(349 pas en moyenne), robustesse 59,6 ± 14,1 %, 10,7 min et 0,90 Wh par
+graine. Détails : [`docs/RESULTATS.md`](docs/RESULTATS.md), section 7.
+
 Le modèle (`models/ppo_nes_v3_s42_3m/ppo.zip`) se regarde dans le menu
 **MODELES → PPO**, avec les graphismes du jeu (x1 = 60 images/s). Les
 méthodes à tableau peuvent aussi jouer sur le vrai jeu, pour comparer :

@@ -8,6 +8,8 @@ partie sans aucun hasard.
 
 Tous les modèles v3 ont été entraînés sur **la même machine** (MacBook Air
 M4) avec CodeCarbon, sauf l'étape 3 (CNN, PC Legion avec carte graphique).
+Sections 1 à 6 : environnement de l'article (grille) ; section 7 : PPO sur
+le vrai jeu NES.
 
 ## 1. Comparaison des algorithmes (v3, 6000 épisodes, moyenne ± écart-type)
 
@@ -132,7 +134,53 @@ résultats sur les deux machines.
 
 Monte Carlo v1/v2 non entraîné (article : 99,1 % et 99,9 %).
 
-## 7. À retenir
+## 7. PPO sur le vrai jeu NES (v3, 3 millions de pas, 5 graines, Mac M4)
+
+Vrai jeu `MarioNES-v0` (physique NES, 1 pas = 4 images), vue « vector »
+(62 nombres : position, vitesses, 5 ennemis, relief devant Mario), 5
+boutons (rien, →, → + saut, → + course, → + saut + course), parties
+limitées à 1000 pas. PPO de Stable-Baselines3 (2 petits réseaux de 2 x 64
+neurones, ≈ 17 000 poids), version finale gardée (sans `--keep-best`). Les
+5 modèles, rechargés dans le cloud, rejouent exactement leur test glouton et
+leur robustesse.
+
+| Mesure | Résultat (moyenne ± écart-type) |
+|---|---|
+| Victoires (500 dernières parties, avec le hasard de PPO) | **81,4 ± 5,6 %** |
+| Retour moyen | 196,7 ± 11,4 |
+| Parties pour 50 % / 80 % de victoires | 2424 ± 398 / 4088 ± 1087 |
+| Première victoire | partie 278 ± 157 |
+| Morts / temps écoulé | 18,0 % / 0,6 % |
+| Test glouton (sans hasard) | **5 / 5 gagnés**, 349 pas en moyenne, retour 237,4 |
+| **Robustesse** (50 parties, 2 % de hasard) | **59,6 ± 14,1 %** (46 à 82 % selon la graine) |
+| Ennemis / blocs ? / briques par partie | 5,14 / 3,21 / 0,00 |
+| Pas par partie / parties jouées | 335 / ≈ 9 500 |
+| Durée | 10,7 min par graine (5 graines en parallèle) |
+| CodeCarbon | 0,90 Wh et 0,050 g de CO₂ par graine |
+
+| Graine | Victoires | Retour | → 50 % | → 80 % | Test glouton | Robustesse |
+|---|---|---|---|---|---|---|
+| 42 | 87,6 % | 206,4 | 2744 | 3010 | gagné, 336 pas | 54 % |
+| 43 | 74,8 % | 178,6 | 2586 | 5469 | gagné, 326 pas | 64 % |
+| 44 | 77,0 % | 194,6 | 1903 | 3148 | gagné, 347 pas | 52 % |
+| 45 | 86,4 % | 206,3 | 2102 | 3873 | gagné, 361 pas | 46 % |
+| 46 | 81,2 % | 197,8 | 2784 | 4942 | gagné, 375 pas | 82 % |
+
+Progression (victoires sur 100 parties, moyenne des 5 graines) :
+
+| Pas | 0,5 M | 1 M | 1,5 M | 2 M | 2,5 M | 3 M |
+|---|---|---|---|---|---|---|
+| Victoires | 36 % | 69 % | 77 % | 80 % | 81 % | 79 % |
+
+PPO plafonne autour de 80 % depuis 2 millions de pas. Pendant
+l'entraînement il tire ses boutons au sort (d'où ≈ 80 %) ; sans hasard il
+gagne toujours, mais il rattrape mal un bouton perturbé (robustesse 60 %).
+0 brique : dans le vrai jeu, Mario petit ne casse pas les briques. Ces
+résultats ne se comparent pas directement aux sections 1 à 5 (jeu plus
+difficile). Sur le même vrai jeu, un Q-Learning de l'article (1 graine,
+30 000 parties) ne dépasse pas ≈ 35 % de victoires, de façon instable.
+
+## 8. À retenir
 
 1. **Sur v3, les trois méthodes à tableau font aussi bien que l'article,
    voire mieux** (94 à 96 % de victoires), coûtent presque rien (16 à 33 s
@@ -154,3 +202,7 @@ Monte Carlo v1/v2 non entraîné (article : 99,1 % et 99,9 %).
    fois sur le Mac ne va pas plus vite au total et coûte 2,4 Wh par graine,
    contre 0,94 Wh en les lançant 2 par 2. DQN coûte aussi en mémoire, pas
    seulement en calcul.
+6. **Sur le vrai jeu NES, PPO apprend là où les tableaux décrochent** :
+   81 % de victoires, test glouton gagné 5 fois sur 5, pour 0,90 Wh par
+   graine. Les méthodes à tableau de l'article ne voient pas la vitesse de
+   Mario et plafonnent vers 35 %.
