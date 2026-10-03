@@ -60,6 +60,11 @@ def article_metrics(history, last=LAST, window=WINDOW):
         "first_win": first_win,
         "epsilon_end": float(history["epsilon"][-1]),
         "n_states": int(history["n_states"][-1]),
+        # vrai jeu NES (PPO) : pièces, salle bonus, power-ups
+        **({"coins": float(tail["coins"].mean()),
+            "bonus_rate": float((tail["bonus"] > 0).mean()),
+            "powerups": float(tail["powerups"].mean())}
+           if "coins" in history else {}),
     }
 
 
@@ -82,8 +87,14 @@ def format_metrics(m, level, greedy=None, algo=None):
     else:
         lines.append(f"  Briques cassées / épisode   : {m['bricks']:.2f}")
         lines.append(f"  Blocs ? frappés / épisode   : {m['qblocks']:.2f}")
-        if level == "v3":
+        if level in ("v3", "full"):
             lines.append(f"  Ennemis vaincus / épisode   : {m['enemies']:.2f}")
+    if "coins" in m and level == "full":
+        lines += [
+            f"  Pièces / épisode            : {m['coins']:.2f}",
+            f"  Passages par la salle bonus : {m['bonus_rate']:.1%}",
+            f"  Champignons/fleurs/étoiles  : {m['powerups']:.2f} / épisode",
+        ]
     lines += [
         "Autres repères :",
         f"  Première victoire       : épisode {_ep(m['first_win'])}",
@@ -104,9 +115,14 @@ def format_metrics(m, level, greedy=None, algo=None):
     if greedy is not None:
         verdict = ("VICTOIRE" if greedy["win"] else
                    "mort" if greedy["dead"] else "temps écoulé")
-        lines.append(f"Test glouton (ε = 0)    : {verdict} en {greedy['steps']} "
-                     f"pas, retour {greedy['return']:.1f}, colonne "
-                     f"{greedy['max_col']}")
+        line = (f"Test glouton (ε = 0)    : {verdict} en {greedy['steps']} "
+                f"pas, retour {greedy['return']:.1f}, colonne "
+                f"{greedy['max_col']}")
+        if "coins" in m and level == "full":
+            line += (f", salle bonus {'oui' if greedy.get('bonus') else 'non'}"
+                     f", {greedy.get('coins', 0)} pièces, "
+                     f"{greedy.get('powerups', 0)} power-up(s)")
+        lines.append(line)
     return "\n".join(lines)
 
 
@@ -130,8 +146,12 @@ def format_summary(metrics_list, level):
     if level != "v1":
         rows += [("Briques / épisode", "bricks", "f2"),
                  ("Blocs ? / épisode", "qblocks", "f2")]
-    if level == "v3":
+    if level in ("v3", "full"):
         rows.append(("Ennemis / épisode", "enemies", "f2"))
+    if level == "full" and all("coins" in m for m in metrics_list):
+        rows += [("Pièces / épisode", "coins", "f2"),
+                 ("Salle bonus", "bonus_rate", "pct"),
+                 ("Power-ups / épisode", "powerups", "f2")]
     lines = [f"Résumé sur {n} graines (moyenne ± écart-type) :"]
     for label, key, fmt in rows:
         mean, std, k = mean_std([m[key] for m in metrics_list])
@@ -249,13 +269,20 @@ def plot_curves(history, tests, path, title, flag_col=198, epsilon=True):
         ax.text(n, history["epsilon"][-1] + 0.03,
                 f"{history['epsilon'][-1]:.3f}", color=INK_2, fontsize=8,
                 ha="right", va="bottom")
+    elif "coins" in history and max(history["coins"], default=0) > 0:
+        _style(ax, "Pièces ramassées (100 épisodes)", "pièces par partie")
+        if len(roll_ep):
+            ax.plot(roll_ep, rolling_mean(history["coins"]), color=SERIES_1,
+                    linewidth=2)
     else:
         _style(ax, "Morts (100 épisodes)", "part des parties perdues")
         if len(roll_ep):
             ax.plot(roll_ep, rolling_mean(history["dead"]), color=SERIES_1,
                     linewidth=2)
         ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.set_ylim(0, 1.05)
+    if epsilon or "coins" not in history or not max(history["coins"],
+                                                    default=0):
+        ax.set_ylim(0, 1.05)
 
     for ax in axes.flat:
         ax.set_xlim(0, n + 1)

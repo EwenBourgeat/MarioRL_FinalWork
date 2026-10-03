@@ -49,6 +49,8 @@ def table_size(agent):
 HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
                   "epsilon", "bricks", "qblocks", "enemies", "jumps",
                   "n_states")
+# en plus sur le vrai jeu NES (PPO) : pièces, salle bonus, power-ups
+NES_FIELDS = ("coins", "bonus", "powerups")
 
 
 @dataclass
@@ -83,6 +85,8 @@ class TrainConfig:
     # --- vrai jeu NES et PPO ---
     env: str = "grid"              # "grid" (article) ou "nes" (vrai jeu)
     actions: str = "paper"         # boutons du vrai jeu (ex. "right_only")
+    reward: str = "paper"          # récompense du vrai jeu ("route_a"...)
+    ent_coef: float = 0.0          # PPO : bonus de curiosité (entropie)
     steps: int = 0                 # PPO : nombre total de pas
     n_envs: int = 2                # PPO : parties jouées en parallèle
     eval_steps: int = 100_000      # PPO : test glouton tous les N pas
@@ -98,7 +102,7 @@ def make_env(cfg):
         from .ppo import make_nes_env
         return make_nes_env(level=cfg.level, obs=cfg.obs,
                             actions=cfg.actions, max_steps=cfg.max_steps,
-                            segments=cfg.segments)
+                            segments=cfg.segments, reward=cfg.reward)
     return MarioGridEnv(level=cfg.level, max_steps=cfg.max_steps,
                         segment_order=cfg.segments, obs=cfg.obs)
 
@@ -199,7 +203,10 @@ def _summary(info, total, max_col, truncated):
     return {"return": total, "win": int(info["win"]), "dead": int(info["dead"]),
             "timeout": int(truncated), "steps": info["t"], "max_col": max_col,
             "bricks": st["bricks_broken"], "qblocks": st["qblocks_hit"],
-            "enemies": st["enemies_killed"], "jumps": st["jumps"]}
+            "enemies": st["enemies_killed"], "jumps": st["jumps"],
+            # vrai jeu NES seulement (0 sur MarioGrid)
+            "coins": st.get("coins", 0), "bonus": st.get("bonus_room", 0),
+            "powerups": st.get("powerups", 0)}
 
 
 def greedy_test(env, agent, seed=0):
@@ -231,7 +238,9 @@ def robustness_test(env, agent, seed=0, episodes=50, epsilon=0.02):
     return {"episodes": n, "epsilon": epsilon,
             "win_rate": sum(r["win"] for r in res) / n,
             "avg_return": sum(r["return"] for r in res) / n,
-            "death_rate": sum(r["dead"] for r in res) / n}
+            "death_rate": sum(r["dead"] for r in res) / n,
+            "bonus_rate": sum(r["bonus"] > 0 for r in res) / n,
+            "avg_coins": sum(r["coins"] for r in res) / n}
 
 
 def train(cfg: TrainConfig, log=print):

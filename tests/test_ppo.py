@@ -105,3 +105,66 @@ def test_ppo_logs_every_n_steps():
     train(ppo_config(log_steps=256, eval_steps=0), log=logs.append)
     assert len(logs) == 4                     # 1024 pas / 256
     assert " 256/1024 " in logs[0] and "pas/s" in logs[0]
+
+
+# ---------------------------------------------------------------------------
+# Route A : tuyau, salle bonus, pièces, champignon
+# ---------------------------------------------------------------------------
+def _route_a_env():
+    from mario_env.envs.nes_env import MarioNESEnv
+    return MarioNESEnv(level="full", obs_type="vector_plus",
+                       actions="right_down", reward="route_a",
+                       max_episode_steps=3000)
+
+
+def test_route_a_buttons_view_and_pipe_reward():
+    env = _route_a_env()
+    obs, _ = env.reset(seed=0, options={"start_col": 57})
+    assert env.action_space.n == 6 and obs.shape == (86,)
+    env.game.p.x = 918                  # centré sur le tuyau de la colonne 57
+    assert abs(env._obs()[-1]) < 0.1    # distance au tuyau ~ 0
+    total = 0.0
+    for a in [0, 5, 5, 5] + [0] * 20:   # bas : on entre dans le tuyau
+        obs, r, term, trunc, info = env.step(a)
+        total += r
+    assert info["area"] == "bonus" and info["stats"]["bonus_room"] == 1
+    assert total > 190                  # +200 pour l'entrée
+    coins = obs[66:81].reshape(5, 3)
+    assert coins[:, 2].sum() == 5       # 5 pièces visibles dans la salle
+    k = 0
+    while info["area"] == "bonus" and k < 800:
+        obs, r, term, trunc, info = env.step(2 if k % 10 < 7 else 1)
+        total += r
+        k += 1
+    for _ in range(40):                 # sortie par le tuyau de la colonne 163
+        obs, r, term, trunc, info = env.step(0)
+        total += r
+    assert info["x"] // 16 == 163 and info["stats"]["coins"] > 5
+    # l'avancée sautée par le tuyau est comptée (position max)
+    assert total > 200 + 10 * info["stats"]["coins"] + 40
+
+
+def test_route_a_metrics_and_cli():
+    pytest.importorskip("stable_baselines3")
+    import train as cli
+    from agents.metrics import format_summary
+    cfg = ppo_config(level="full", obs="vector_plus", actions="right_down",
+                     reward="route_a", eval_steps=0)
+    agent, history, tests, final, _ = train(cfg, log=None)
+    assert {"coins", "bonus", "powerups"} <= set(history)
+    m = article_metrics(history)
+    assert {"coins", "bonus_rate", "powerups"} <= set(m)
+    assert "Passages par la salle bonus" in format_metrics(m, "full", final,
+                                                          "ppo")
+    assert "Salle bonus" in format_summary([m, m], "full")
+    assert "salle bonus" in format_metrics(m, "full", final, "ppo")
+    parser = cli.build_parser()
+    args = parser.parse_args(["--algo", "ppo", "--level", "full", "--obs",
+                              "vector_plus", "--actions", "right_down",
+                              "--reward", "route_a", "--ent-coef", "0.01"])
+    cli.resolve_defaults(parser, args)
+    assert args.env == "nes" and args.ent_coef == 0.01
+    for bad in (["--algo", "qlearning", "--reward", "route_a"],
+                ["--algo", "sarsa", "--actions", "right_down"]):
+        with pytest.raises(SystemExit):
+            cli.resolve_defaults(parser, parser.parse_args(bad))

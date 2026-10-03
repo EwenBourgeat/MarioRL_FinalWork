@@ -20,6 +20,9 @@ ACTION_SETS = {
     "paper": [["NOOP"], ["right"], ["A"]],
     "right_only": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
                    ["right", "A", "B"]],
+    # right_only + bas (entrer dans le tuyau de la salle bonus)
+    "right_down": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
+                   ["right", "A", "B"], ["down"]],
     "simple": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
                ["right", "A", "B"], ["A"], ["left"]],
     "complex": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
@@ -71,6 +74,7 @@ class RewardConfig:
     coin: float = 0.0
     powerup: float = 0.0
     one_up: float = 0.0
+    bonus_room: float = 0.0          # entrée dans la salle bonus (tuyau)
     score_scale: float = 0.0         # multiplie la variation du score NES
     time_penalty: float = 0.0        # par seconde de chrono écoulée
     clip: Optional[Tuple[float, float]] = None
@@ -84,6 +88,13 @@ class RewardConfig:
             return cls(progress_per_tile=16.0, stand_still=0.0, win=15.0,
                        death=-15.0, brick=0.0, qblock=0.0, enemy=0.0,
                        time_penalty=-1.0, clip=(-15.0, 15.0))
+        if name == "route_a":
+            # route « collectionneur » : tuyau, salle bonus, pièces,
+            # champignon.  L'avancée est comptée sur la position la plus à
+            # droite atteinte : sinon le raccourci du tuyau (colonne 57 ->
+            # 163) ne rapporte rien et le détour fait perdre des points.
+            return cls(only_new_progress=True, coin=10.0, bonus_room=200.0,
+                       powerup=50.0)
         if name == "score":
             return cls(progress_per_tile=0.0, stand_still=0.0, win=0.0,
                        death=0.0, brick=0.0, qblock=0.0, enemy=0.0,

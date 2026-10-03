@@ -30,14 +30,16 @@ from pathlib import Path
 import gymnasium as gym
 import numpy as np
 
-from .training import (HISTORY_FIELDS, _summary, greedy_test, make_env,
-                       robustness_test)
+from .training import (HISTORY_FIELDS, NES_FIELDS, _summary, greedy_test,
+                       make_env, robustness_test)
 
 FILENAME = "ppo.zip"
 
 # Réglages PPO (Stable-Baselines3) : 512 pas par partie en parallèle avant
 # chaque apprentissage, paquets de 256 pas, 10 passages sur les données,
-# bornage à 20 % (clip), lissage des avantages (GAE) 0,95
+# bornage à 20 % (clip), lissage des avantages (GAE) 0,95.  ent_coef = bonus
+# de curiosité (entropie) : récompense le fait de garder des choix variés,
+# réglable avec --ent-coef (0 par défaut)
 PPO_SETTINGS = dict(n_steps=512, batch_size=256, n_epochs=10,
                     gae_lambda=0.95, clip_range=0.2, ent_coef=0.0)
 
@@ -65,7 +67,7 @@ class AgentInfo(gym.Wrapper):
 
 
 def make_nes_env(level="v3", obs="vector", actions="right_only",
-                 max_steps=1000, segments=None, **kwargs):
+                 max_steps=1000, segments=None, reward="paper", **kwargs):
     """MarioNES-v0 prêt pour nos agents.
 
     * ``obs="vector"`` : 62 nombres (position, vitesses, 5 ennemis les plus
@@ -74,12 +76,15 @@ def make_nes_env(level="v3", obs="vector", actions="right_only",
       droite+saut+course (avec les 3 boutons de l'article, Mario ne passe
       pas les grands tuyaux du vrai jeu) ;
     * ``max_steps=1000`` : sinon une partie coincée dure jusqu'à la fin du
-      chrono (2400 pas).
+      chrono (2400 pas) ;
+    * route A : ``level="full"``, ``obs="vector_plus"``,
+      ``actions="right_down"``, ``reward="route_a"``.
     """
     from mario_env.envs.nes_env import MarioNESEnv
     return AgentInfo(MarioNESEnv(level=level, obs_type=obs, actions=actions,
                                  max_episode_steps=max_steps,
-                                 segment_order=segments, **kwargs))
+                                 segment_order=segments, reward=reward,
+                                 **kwargs))
 
 
 class EpisodeRecorder(gym.Wrapper):
@@ -195,8 +200,9 @@ def train_ppo(cfg, log=print):
         return EpisodeRecorder(make_env(cfg), episodes)
 
     venv = DummyVecEnv([factory for _ in range(cfg.n_envs)])
+    settings = dict(PPO_SETTINGS, ent_coef=cfg.ent_coef)
     model = PPO("MlpPolicy", venv, learning_rate=cfg.lr, gamma=cfg.gamma,
-                seed=cfg.seed, device="cpu", verbose=0, **PPO_SETTINGS)
+                seed=cfg.seed, device="cpu", verbose=0, **settings)
     agent = PPOAgent(model, venv.action_space.n, cfg.seed)
     test_env = make_env(cfg)
     tests = []
@@ -253,11 +259,11 @@ def train_ppo(cfg, log=print):
     final = greedy_test(test_env, agent, cfg.seed)
     seconds = time.perf_counter() - t0
 
-    history = {k: [] for k in HISTORY_FIELDS}
+    history = {k: [] for k in HISTORY_FIELDS + NES_FIELDS}
     total = 0
     for e in episodes:
         total += e["steps"]
         e = dict(e, epsilon=0.0, n_states=total)   # PPO : pas d'epsilon
-        for k in HISTORY_FIELDS:
+        for k in history:
             history[k].append(e[k])
     return agent, history, tests, final, seconds

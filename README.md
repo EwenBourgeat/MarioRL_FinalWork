@@ -479,6 +479,35 @@ victoires sur les 500 dernières parties, test glouton gagné 5 fois sur 5
 (349 pas en moyenne), robustesse 59,6 ± 14,1 %, 10,7 min et 0,90 Wh par
 graine. Détails : [`docs/RESULTATS.md`](docs/RESULTATS.md), section 7.
 
+#### Route A : tuyau, salle bonus, pièces et champignon
+
+Pour apprendre à Mario à passer par le tuyau de la colonne 57, ramasser les
+19 pièces de la salle bonus, puis ressortir colonne 163 :
+
+* `--level full` : jeu complet (champignon, fleur, salle bonus) ;
+* `--actions right_down` : les 5 boutons + **bas** (entrer dans le tuyau, en
+  étant centré dessus à 9 pixels près, comme dans le vrai jeu) ;
+* `--obs vector_plus` : la vue `vector` + l'objet le plus proche
+  (champignon...), les 5 pièces les plus proches, le bloc ? devant Mario et
+  la distance au tuyau (86 nombres) ;
+* `--reward route_a` : pièce +10, entrée dans la salle bonus +200,
+  champignon / fleur / étoile +50 (ennemi +5, drapeau +100, mort −50).
+  L'avancée est comptée sur la **position la plus à droite atteinte** :
+  sinon le raccourci du tuyau ne rapporte rien (détour mesuré à −1,6 point
+  avec la récompense de l'article, +376 avec `route_a`).
+
+Le tuyau saute le milieu du niveau : la fleur (blocs 78 et 109), l'étoile et
+11 des 17 ennemis ne sont pas sur cette route.
+
+```bash
+python train.py --algo ppo --level full --obs vector_plus --actions right_down \
+    --reward route_a --steps 5000000 --seeds 42 43 44 45 46 --carbon \
+    --variant routeA --log-steps 250000
+```
+
+Mesures en plus : pièces par partie, part des parties passées par la salle
+bonus, power-ups (dans l'entraînement, le test glouton et la robustesse).
+
 Le modèle (`models/ppo_nes_v3_s42_3m/ppo.zip`) se regarde dans le menu
 **MODELES → PPO**, avec les graphismes du jeu (x1 = 60 images/s). Les
 méthodes à tableau peuvent aussi jouer sur le vrai jeu, pour comparer :

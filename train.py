@@ -42,12 +42,19 @@ def build_parser():
                    help="grid = environnement de l'article, nes = vrai jeu "
                         "(défaut : nes pour PPO, grid sinon)")
     p.add_argument("--actions", default=None,
-                   choices=["paper", "right_only", "simple", "complex"],
-                   help="vrai jeu : boutons (défaut right_only)")
+                   choices=["paper", "right_only", "right_down", "simple",
+                            "complex"],
+                   help="vrai jeu : boutons (défaut right_only ; right_down "
+                        "= right_only + bas, pour le tuyau)")
+    p.add_argument("--reward", choices=["paper", "route_a"], default="paper",
+                   help="vrai jeu : récompense (paper = article ; route_a = "
+                        "tuyau, salle bonus, pièces, champignon)")
     p.add_argument("--steps", type=int, default=3_000_000,
                    help="PPO : nombre total de pas (défaut 3000000)")
     p.add_argument("--n-envs", type=int, default=d.n_envs,
                    help="PPO : parties jouées en parallèle par graine")
+    p.add_argument("--ent-coef", type=float, default=d.ent_coef,
+                   help="PPO : bonus de curiosité (entropie), ex. 0.01")
     p.add_argument("--eval-steps", type=int, default=d.eval_steps,
                    help="PPO : test glouton tous les N pas")
     p.add_argument("--log-steps", type=int, default=d.log_steps,
@@ -70,9 +77,12 @@ def build_parser():
                    help="limite de pas par épisode")
     p.add_argument("--eval-every", type=int, default=d.eval_every,
                    help="test glouton tous les N épisodes (0 = jamais)")
-    p.add_argument("--obs", choices=["paper", "full", "vector"], default=None,
+    p.add_argument("--obs", choices=["paper", "full", "vector", "vector_plus"],
+                   default=None,
                    help="vue de l'agent : paper (article), full (vue "
-                        "complète, notre DQN) ou vector (vrai jeu, PPO)")
+                        "complète, notre DQN), vector ou vector_plus (vrai "
+                        "jeu, PPO ; vector_plus voit aussi pièces, objets, "
+                        "blocs ? et tuyau)")
     p.add_argument("--variant", default=None,
                    help="étiquette de l'expérience, ex. E1 (ajoutée au nom)")
     p.add_argument("--double", action="store_true",
@@ -130,13 +140,18 @@ def resolve_defaults(parser, args):
         args.eps_min = 0.05 if args.algo == "dqn" else 0.01
     if args.algo == "ppo" and args.env != "nes":
         parser.error("PPO joue sur le vrai jeu : --env nes")
-    if args.algo == "ppo" and args.obs != "vector":
-        parser.error("PPO : vue --obs vector")
+    if args.algo == "ppo" and args.obs not in ("vector", "vector_plus"):
+        parser.error("PPO : vue --obs vector ou vector_plus")
+    if args.env != "nes" and (args.reward != "paper"
+                              or args.obs == "vector_plus"):
+        parser.error("--reward route_a et --obs vector_plus : vrai jeu "
+                     "seulement (--env nes)")
     if args.algo == "dqn" and args.env == "nes":
         parser.error("DQN sur le vrai jeu : pas encore prévu (utiliser PPO)")
     if args.env == "nes" and args.algo != "ppo" and args.obs != "paper":
         parser.error("tableaux sur le vrai jeu : vue --obs paper")
-    if args.env == "grid" and (args.level == "full" or args.obs == "vector"):
+    if args.env == "grid" and (args.level == "full" or args.obs == "vector"
+                               or args.actions != "paper"):
         parser.error("--level full et --obs vector : vrai jeu seulement "
                      "(--env nes)")
 
@@ -159,10 +174,11 @@ def main(argv=None):
                            device=args.device, threads=args.threads,
                            buffer_size=args.buffer_size, lr=args.lr,
                            log_every=args.log_every, env=args.env,
-                           actions=args.actions,
+                           actions=args.actions, reward=args.reward,
                            steps=args.steps if args.algo == "ppo" else 0,
                            n_envs=args.n_envs,
                            eval_steps=args.eval_steps,
+                           ent_coef=args.ent_coef,
                            log_steps=args.log_steps).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
@@ -176,7 +192,8 @@ def main(argv=None):
             c["alpha"] = None
     seeds_txt = ", ".join(map(str, args.seeds))
     env_txt = (f"MarioNES {args.level} (vrai jeu, vue {args.obs}, boutons "
-               f"{args.actions})" if nes else f"MarioGrid {args.level}")
+               f"{args.actions}, récompense {args.reward})" if nes
+               else f"MarioGrid {args.level}")
     if args.algo == "ppo":
         print(f"PPO | {env_txt} | {args.steps} pas | graines {seeds_txt} | "
               f"lr {args.lr:g} (Adam) gamma={args.gamma} | {args.n_envs} "
@@ -236,13 +253,17 @@ def main(argv=None):
                   f"victoires sur {robust['episodes']} parties avec "
                   f"{robust['epsilon']:.0%} de hasard (retour moyen "
                   f"{robust['avg_return']:.1f})")
+            if cfg["level"] == "full":
+                print(f"                          salle bonus "
+                      f"{robust['bonus_rate']:.0%} des parties, "
+                      f"{robust['avg_coins']:.1f} pièces en moyenne")
         if args.no_save:
             continue
         meta = dict(cfg, env="MarioNES-v0" if nes else "MarioGrid-v0",
                     robust=robust, carbon=carbon,
                     best_steps=getattr(agent, "best_steps", None),
                     best_episode=getattr(agent, "best_episode", None),
-                    reward="paper", metrics=m, greedy=final,
+                    metrics=m, greedy=final,
                     train_seconds=round(seconds, 2))
         meta.pop("log_every", None)
         name = args.name if (args.name and len(configs) == 1) else None

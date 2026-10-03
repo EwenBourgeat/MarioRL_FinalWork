@@ -24,10 +24,19 @@ from .common import (
     resolve_reward,
 )
 
-OBS_TYPES = ("tiles", "rgb", "vector", "paper")
+OBS_TYPES = ("tiles", "rgb", "vector", "vector_plus", "paper")
 SOLID_NP = np.asarray(C.SOLID_LUT, dtype=bool)
 N_ENEMY_FEATURES = 5
 AHEAD = 16
+# vue « vector_plus » (route A) : objet le plus proche, pièces, bloc ?
+# devant, distance au tuyau de la salle bonus
+N_COIN_FEATURES = 5
+ITEM_CODE = {"mushroom": 0.25, "flower": 0.5, "star": 0.75, "1up": 1.0}
+QBLOCK_LUT = np.zeros(256, dtype=bool)
+QBLOCK_LUT[[C.QBLOCK_COIN, C.QBLOCK_POWERUP]] = True
+# milieu de la fenêtre où « bas » fait entrer dans le tuyau (x de 916 à 924)
+WARP_X = L.WARP_PIPE_COL * C.TILE + 8
+N_PLUS_FEATURES = 4 + 3 * N_COIN_FEATURES + 4 + 1
 
 
 class MarioNESEnv(gym.Env):
@@ -36,8 +45,10 @@ class MarioNESEnv(gym.Env):
     Paramètres principaux
     ---------------------
     obs_type : "tiles" (grille 13x16 de codes, défaut), "rgb" (pixels),
-        "vector" (caractéristiques continues) ou "paper" (tuple discret au
-        format de l'article : colonne, rangée, phase de saut, viewport).
+        "vector" (caractéristiques continues), "vector_plus" (vector + objet
+        le plus proche, pièces, bloc ? devant, tuyau de la salle bonus) ou
+        "paper" (tuple discret au format de l'article : colonne, rangée,
+        phase de saut, viewport).
     actions : "simple" (7 actions, défaut), "right_only", "complex",
         "paper" (rien / droite / saut) ou liste de combinaisons de boutons.
     frame_skip : nombre d'images NES par pas (l'action est maintenue).
@@ -111,8 +122,10 @@ class MarioNESEnv(gym.Env):
             h, w = self.rgb_size if self.rgb_size else (C.SCREEN_H, C.SCREEN_W)
             shape = (h, w) if self.grayscale else (h, w, 3)
             return spaces.Box(0, 255, shape, dtype=np.uint8)
-        if self.obs_type == "vector":
+        if self.obs_type in ("vector", "vector_plus"):
             n = 10 + 4 * N_ENEMY_FEATURES + 2 * AHEAD
+            if self.obs_type == "vector_plus":
+                n += N_PLUS_FEATURES
             return spaces.Box(-4.0, 4.0, (n,), dtype=np.float32)
         vp = self.paper_viewport
         nvec = [L.LEVEL_COLS, 14, 3]
@@ -234,6 +247,7 @@ class MarioNESEnv(gym.Env):
         r += rc.coin * d("coins")
         r += rc.powerup * d("powerups")
         r += rc.one_up * d("one_ups")
+        r += rc.bonus_room * d("bonus_room")
         r += rc.score_scale * (info["score"] - prev["score"])
         r += rc.time_penalty * max(0, prev["time"] - info["time"])
         if info["dead"]:
@@ -254,6 +268,8 @@ class MarioNESEnv(gym.Env):
             return self._obs_rgb()
         if self.obs_type == "vector":
             return self._obs_vector()
+        if self.obs_type == "vector_plus":
+            return self._obs_vector_plus()
         return self._obs_paper()
 
     def _entity_cells(self):
@@ -351,6 +367,49 @@ class MarioNESEnv(gym.Env):
             obst = np.zeros(AHEAD)
         v.extend(np.stack([height, obst], axis=1).ravel().tolist())
         return np.clip(np.asarray(v, dtype=np.float32), -4.0, 4.0)
+
+    def _obs_vector_plus(self):
+        """``vector`` + ce qu'il faut voir pour la route A (24 nombres)."""
+        g = self.game
+        p = g.p
+        mx, my = p.x + 8, p.y + 24              # centre de Mario
+        v = []
+        # objet le plus proche (champignon, fleur, étoile, 1-UP)
+        items = [e for e in g.enemies if e.alive and e.is_item]
+        if items:
+            e = min(items, key=lambda e: abs(e.x - p.x))
+            v += [(e.x - p.x) / 256.0, ((e.y + 24) - (p.y + 32)) / 240.0,
+                  ITEM_CODE[e.kind], 1.0]
+        else:
+            v += [0.0, 0.0, 0.0, 0.0]
+        # on ne regarde qu'autour de Mario : 8 colonnes derrière, 16 devant
+        col = (p.x + 8) >> 4
+        a, b = max(col - 8, 0), min(col + AHEAD, g.W)
+        window = g.grid[:, a:b]
+        # les pièces les plus proches (salle bonus)
+        rows, cols = np.nonzero(window == C.COIN)
+        dx = ((cols + a) * C.TILE + 8 - mx) / 256.0
+        dy = (rows * C.TILE + 8 - my) / 240.0
+        order = np.argsort(dx * dx + dy * dy)[:N_COIN_FEATURES]
+        for i in range(N_COIN_FEATURES):
+            v += ([dx[order[i]], dy[order[i]], 1.0] if i < len(order)
+                  else [0.0, 0.0, 0.0])
+        # bloc ? le plus proche devant Mario (à partir d'1 colonne derrière)
+        rows, cols = np.nonzero(QBLOCK_LUT[window])
+        ahead = cols + a >= col - 1
+        rows, cols = rows[ahead], cols[ahead]
+        if len(cols):
+            i = int(np.argmin(np.abs(cols + a - col)))
+            r, c = rows[i], cols[i] + a
+            v += [(c * C.TILE + 8 - mx) / 256.0,
+                  (r * C.TILE + 8 - my) / 240.0,
+                  float(window[r, cols[i]] == C.QBLOCK_POWERUP), 1.0]
+        else:
+            v += [0.0, 0.0, 0.0, 0.0]
+        # distance au milieu du tuyau de la salle bonus (en 4 pixels)
+        v.append((WARP_X - p.x) / 64.0 if g.area == "overworld" else 0.0)
+        extra = np.clip(np.asarray(v, dtype=np.float32), -4.0, 4.0)
+        return np.concatenate([self._obs_vector(), extra])
 
     def _obs_paper(self):
         g = self.game
