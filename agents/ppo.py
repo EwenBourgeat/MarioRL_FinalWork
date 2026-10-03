@@ -227,13 +227,20 @@ def train_ppo(cfg, log=print):
             return True
 
         def _log(self, n):
-            last = episodes[-100:] or [{"win": 0, "return": 0.0}]
+            last = episodes[-100:] or [{"win": 0, "return": 0.0, "coins": 0,
+                                        "bonus": 0}]
             sec = time.perf_counter() - t0
+            extra = ""
+            if cfg.level == "full":     # route A : pièces et salle bonus
+                extra = (f" | pièces {sum(e['coins'] for e in last) / len(last):4.1f}"
+                         f" | salle bonus "
+                         f"{sum(e['bonus'] > 0 for e in last) / len(last):4.0%}")
             log(f"[graine {cfg.seed}] pas {self.num_timesteps:>9}/{cfg.steps} "
                 f"| épisode {n:>6} | victoires (100 dern.) "
                 f"{sum(e['win'] for e in last) / len(last):6.1%} | retour "
-                f"moyen {sum(e['return'] for e in last) / len(last):7.1f} | "
-                f"{sec:6.1f} s ({self.num_timesteps / sec:5.0f} pas/s)")
+                f"moyen {sum(e['return'] for e in last) / len(last):7.1f}"
+                f"{extra} | {sec:6.1f} s "
+                f"({self.num_timesteps / sec:5.0f} pas/s)")
 
         def _evaluate(self, n):
             nonlocal best

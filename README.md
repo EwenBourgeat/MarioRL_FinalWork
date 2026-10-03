@@ -489,20 +489,25 @@ Pour apprendre à Mario à passer par le tuyau de la colonne 57, ramasser les
   étant centré dessus à 9 pixels près, comme dans le vrai jeu) ;
 * `--obs vector_plus` : la vue `vector` + l'objet le plus proche
   (champignon...), les 5 pièces les plus proches, le bloc ? devant Mario et
-  la distance au tuyau (86 nombres) ;
+  la distance au tuyau utile (celui de la salle bonus dehors, celui de la
+  sortie dans la salle), soit 86 nombres ;
 * `--reward route_a` : pièce +10, entrée dans la salle bonus +200,
-  champignon / fleur / étoile +50 (ennemi +5, drapeau +100, mort −50).
-  L'avancée est comptée sur la **position la plus à droite atteinte** :
-  sinon le raccourci du tuyau ne rapporte rien (détour mesuré à −1,6 point
-  avec la récompense de l'article, +376 avec `route_a`).
+  champignon / fleur / étoile +50, −0,5 par seconde du chrono (ennemi +5,
+  drapeau +100, mort −50). L'avancée est comptée sur la **position la plus
+  à droite atteinte** : sinon le raccourci du tuyau ne rapporte rien
+  (détour mesuré à −1,6 point avec la récompense de l'article). Sans la
+  pénalité de temps, un essai restait bloqué dans la salle bonus jusqu'à la
+  limite de pas (1 partie sur 3) : y rester ne coûtait rien ;
+* `--ent-coef 0.01` : bonus de curiosité de PPO (aide à découvrir le tuyau :
+  50 % de passages par la salle bonus contre 37 % sans, à 2 millions de pas).
 
 Le tuyau saute le milieu du niveau : la fleur (blocs 78 et 109), l'étoile et
 11 des 17 ennemis ne sont pas sur cette route.
 
 ```bash
 python train.py --algo ppo --level full --obs vector_plus --actions right_down \
-    --reward route_a --steps 5000000 --seeds 42 43 44 45 46 --carbon \
-    --variant routeA --log-steps 250000
+    --reward route_a --ent-coef 0.01 --steps 5000000 --seeds 42 43 44 45 46 \
+    --carbon --variant routeA --log-steps 250000
 ```
 
 Mesures en plus : pièces par partie, part des parties passées par la salle

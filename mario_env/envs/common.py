@@ -93,8 +93,11 @@ class RewardConfig:
             # champignon.  L'avancée est comptée sur la position la plus à
             # droite atteinte : sinon le raccourci du tuyau (colonne 57 ->
             # 163) ne rapporte rien et le détour fait perdre des points.
+            # Pénalité de temps (-0,5 par seconde du chrono, ~ -0,08 par
+            # pas) : sans elle, rester dans la salle bonus jusqu'à la limite
+            # de pas ne coûte rien (essai : 1/3 des parties bloquées ainsi).
             return cls(only_new_progress=True, coin=10.0, bonus_room=200.0,
-                       powerup=50.0)
+                       powerup=50.0, time_penalty=-0.5)
         if name == "score":
             return cls(progress_per_tile=0.0, stand_still=0.0, win=0.0,
                        death=0.0, brick=0.0, qblock=0.0, enemy=0.0,

@@ -36,6 +36,8 @@ QBLOCK_LUT = np.zeros(256, dtype=bool)
 QBLOCK_LUT[[C.QBLOCK_COIN, C.QBLOCK_POWERUP]] = True
 # milieu de la fenêtre où « bas » fait entrer dans le tuyau (x de 916 à 924)
 WARP_X = L.WARP_PIPE_COL * C.TILE + 8
+# dans la salle bonus : Mario contre l'embouchure du tuyau de sortie (col. 13)
+BONUS_EXIT_X = 13 * C.TILE - 8
 N_PLUS_FEATURES = 4 + 3 * N_COIN_FEATURES + 4 + 1
 
 
@@ -406,8 +408,10 @@ class MarioNESEnv(gym.Env):
                   float(window[r, cols[i]] == C.QBLOCK_POWERUP), 1.0]
         else:
             v += [0.0, 0.0, 0.0, 0.0]
-        # distance au milieu du tuyau de la salle bonus (en 4 pixels)
-        v.append((WARP_X - p.x) / 64.0 if g.area == "overworld" else 0.0)
+        # distance au tuyau utile (unité : 64 pixels) : celui de la salle
+        # bonus dehors, celui de la sortie dans la salle bonus
+        target = WARP_X if g.area == "overworld" else BONUS_EXIT_X
+        v.append((target - p.x) / 64.0)
         extra = np.clip(np.asarray(v, dtype=np.float32), -4.0, 4.0)
         return np.concatenate([self._obs_vector(), extra])
 

@@ -131,17 +131,20 @@ def test_route_a_buttons_view_and_pipe_reward():
     assert total > 190                  # +200 pour l'entrée
     coins = obs[66:81].reshape(5, 3)
     assert coins[:, 2].sum() == 5       # 5 pièces visibles dans la salle
+    assert obs[-1] > 1                  # la sortie est à droite
     k = 0
     while info["area"] == "bonus" and k < 800:
         obs, r, term, trunc, info = env.step(2 if k % 10 < 7 else 1)
         total += r
         k += 1
+    exit_reward = 0.0
     for _ in range(40):                 # sortie par le tuyau de la colonne 163
         obs, r, term, trunc, info = env.step(0)
-        total += r
+        exit_reward += r
     assert info["x"] // 16 == 163 and info["stats"]["coins"] > 5
-    # l'avancée sautée par le tuyau est comptée (position max)
-    assert total > 200 + 10 * info["stats"]["coins"] + 40
+    # l'avancée sautée par le tuyau est comptée (position max) : ~ +53
+    assert exit_reward > 40
+    assert total + exit_reward > 200 + 10 * info["stats"]["coins"]
 
 
 def test_route_a_metrics_and_cli():
