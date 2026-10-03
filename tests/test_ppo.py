@@ -176,3 +176,29 @@ def test_route_a_metrics_and_cli():
                 ["--algo", "sarsa", "--actions", "right_down"]):
         with pytest.raises(SystemExit):
             cli.resolve_defaults(parser, parser.parse_args(bad))
+
+
+def test_full_a_flower_block_and_route_a2_reward():
+    from mario_env.envs.nes_env import MarioNESEnv
+    import mario_env.constants as C
+    assert MarioNESEnv(level="full").game.grid[9, 34] == C.EMPTY
+    for status, kind, final in ((1, "flower", "fireball"),
+                                (0, "mushroom", "tall")):
+        env = MarioNESEnv(level="full_a", obs_type="vector_plus",
+                          actions="right_down", reward="route_a2")
+        env.reset(seed=0, options={"start_col": 33})
+        g = env.game
+        assert g.grid[9, 34] == C.QBLOCK_POWERUP     # le bloc ajouté
+        g.p.status = status
+        hit = 0.0
+        for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:
+            obs, r, term, trunc, info = env.step(a)
+            hit += r
+        assert info["stats"]["powerup_blocks"] == 1 and hit > 15   # +25
+        [item] = [e for e in g.enemies if e.is_item]
+        assert item.kind == kind
+        g.p.x, g.p.y = item.x, item.y - 16           # Mario sur l'objet
+        got = sum(env.step(0)[1] for _ in range(5))
+        assert info["stats"][kind + "s"] == 0
+        assert env.game.stats[kind + "s"] == 1 and got > 140   # +150
+        assert env.game.info()["status"] == final

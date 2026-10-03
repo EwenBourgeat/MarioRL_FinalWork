@@ -257,6 +257,7 @@ class MarioNESEnv(gym.Env):
         r += rc.powerup * d("powerups")
         r += rc.one_up * d("one_ups")
         r += rc.bonus_room * d("bonus_room")
+        r += rc.powerup_block * d("powerup_blocks")
         r += rc.score_scale * (info["score"] - prev["score"])
         r += rc.time_penalty * max(0, prev["time"] - info["time"])
         if info["dead"]:

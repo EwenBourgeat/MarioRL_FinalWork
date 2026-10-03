@@ -35,9 +35,10 @@ def build_parser():
                     "PPO sur le vrai jeu NES")
     p.add_argument("--algo", choices=sorted(ALGO_NAMES), default=d.algo,
                    help="algorithme (défaut : qlearning)")
-    p.add_argument("--level", choices=["v1", "v2", "v3", "full"],
+    p.add_argument("--level", choices=["v1", "v2", "v3", "full", "full_a"],
                    default=d.level,
-                   help="full = jeu complet (vrai jeu NES seulement)")
+                   help="full = jeu complet, full_a = jeu complet + un bloc "
+                        "de fleur en colonne 34 (vrai jeu NES seulement)")
     p.add_argument("--env", choices=["grid", "nes"], default=None,
                    help="grid = environnement de l'article, nes = vrai jeu "
                         "(défaut : nes pour PPO, grid sinon)")
@@ -46,9 +47,11 @@ def build_parser():
                             "complex"],
                    help="vrai jeu : boutons (défaut right_only ; right_down "
                         "= right_only + bas, pour le tuyau)")
-    p.add_argument("--reward", choices=["paper", "route_a"], default="paper",
+    p.add_argument("--reward", choices=["paper", "route_a", "route_a2"],
+                   default="paper",
                    help="vrai jeu : récompense (paper = article ; route_a = "
-                        "tuyau, salle bonus, pièces, champignon)")
+                        "tuyau, salle bonus, pièces, champignon ; route_a2 = "
+                        "route_a + champignon et fleur très motivés)")
     p.add_argument("--steps", type=int, default=3_000_000,
                    help="PPO : nombre total de pas (défaut 3000000)")
     p.add_argument("--n-envs", type=int, default=d.n_envs,
@@ -150,7 +153,8 @@ def resolve_defaults(parser, args):
         parser.error("DQN sur le vrai jeu : pas encore prévu (utiliser PPO)")
     if args.env == "nes" and args.algo != "ppo" and args.obs != "paper":
         parser.error("tableaux sur le vrai jeu : vue --obs paper")
-    if args.env == "grid" and (args.level == "full" or args.obs == "vector"
+    if args.env == "grid" and (args.level.startswith("full")
+                               or args.obs == "vector"
                                or args.actions != "paper"):
         parser.error("--level full et --obs vector : vrai jeu seulement "
                      "(--env nes)")
@@ -253,10 +257,12 @@ def main(argv=None):
                   f"victoires sur {robust['episodes']} parties avec "
                   f"{robust['epsilon']:.0%} de hasard (retour moyen "
                   f"{robust['avg_return']:.1f})")
-            if cfg["level"] == "full":
+            if cfg["level"].startswith("full"):
                 print(f"                          salle bonus "
                       f"{robust['bonus_rate']:.0%} des parties, "
-                      f"{robust['avg_coins']:.1f} pièces en moyenne")
+                      f"{robust['avg_coins']:.1f} pièces en moyenne, "
+                      f"champignon {robust['mushroom_rate']:.0%}, fleur "
+                      f"{robust['flower_rate']:.0%}")
         if args.no_save:
             continue
         meta = dict(cfg, env="MarioNES-v0" if nes else "MarioGrid-v0",

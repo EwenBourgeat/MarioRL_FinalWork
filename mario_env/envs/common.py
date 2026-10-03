@@ -75,6 +75,7 @@ class RewardConfig:
     powerup: float = 0.0
     one_up: float = 0.0
     bonus_room: float = 0.0          # entrée dans la salle bonus (tuyau)
+    powerup_block: float = 0.0       # bloc ? power-up frappé (objet sorti)
     score_scale: float = 0.0         # multiplie la variation du score NES
     time_penalty: float = 0.0        # par seconde de chrono écoulée
     clip: Optional[Tuple[float, float]] = None
@@ -98,6 +99,12 @@ class RewardConfig:
             # de pas ne coûte rien (essai : 1/3 des parties bloquées ainsi).
             return cls(only_new_progress=True, coin=10.0, bonus_room=200.0,
                        powerup=50.0, time_penalty=-0.5)
+        if name == "route_a2":
+            # route_a + champignon et fleur très motivés : +150 chacun, et
+            # +25 pour frapper un bloc ? power-up (chaque bloc ne se frappe
+            # qu'une fois) ; à utiliser avec le niveau « full_a »
+            return cls(only_new_progress=True, coin=10.0, bonus_room=200.0,
+                       powerup=150.0, powerup_block=25.0, time_penalty=-0.5)
         if name == "score":
             return cls(progress_per_tile=0.0, stand_still=0.0, win=0.0,
                        death=0.0, brick=0.0, qblock=0.0, enemy=0.0,
@@ -168,4 +175,9 @@ LEVEL_VERSIONS = {
     # jeu complet (power-ups, salle bonus, 1-UP caché)
     "full": dict(blocks=True, enemies=True, powerups=True, bonus_room=True,
                  hidden_1up=True),
+    # jeu complet + un bloc ? power-up en colonne 34 (entre les tuyaux 28 et
+    # 38) : une fleur tôt, bien avant le tuyau de la salle bonus (colonne 57)
+    "full_a": dict(blocks=True, enemies=True, powerups=True,
+                   bonus_room=True, hidden_1up=True,
+                   extra_blocks=((34, 9, C.QBLOCK_POWERUP),)),
 }

@@ -521,7 +521,20 @@ pénalité de temps, deux cases séparées pour les deux tuyaux, et les
 boutons du pas précédent dans la vue.
 
 Mesures en plus : pièces par partie, part des parties passées par la salle
-bonus, power-ups (dans l'entraînement, le test glouton et la robustesse).
+bonus, power-ups, parties avec champignon / avec fleur (dans
+l'entraînement, le test glouton et la robustesse).
+
+**Variante avec fleur tôt** : `--level full_a` ajoute un bloc ? power-up en
+colonne 34 (entre les tuyaux 28 et 38, bien avant la salle bonus) : il donne
+la fleur si Mario est grand, un champignon sinon. `--reward route_a2` =
+`route_a` + champignon et fleur à +150 chacun et +25 pour frapper un bloc ?
+power-up.
+
+```bash
+python train.py --algo ppo --level full_a --obs vector_plus --actions right_down \
+    --reward route_a2 --ent-coef 0.01 --steps 5000000 --seeds 42 43 44 45 46 \
+    --carbon --variant B --log-steps 250000
+```
 
 Le modèle (`models/ppo_nes_v3_s42_3m/ppo.zip`) se regarde dans le menu
 **MODELES → PPO**, avec les graphismes du jeu (x1 = 60 images/s). Les

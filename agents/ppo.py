@@ -228,13 +228,19 @@ def train_ppo(cfg, log=print):
 
         def _log(self, n):
             last = episodes[-100:] or [{"win": 0, "return": 0.0, "coins": 0,
-                                        "bonus": 0}]
+                                        "bonus": 0, "mushrooms": 0,
+                                        "flowers": 0}]
             sec = time.perf_counter() - t0
             extra = ""
-            if cfg.level == "full":     # route A : pièces et salle bonus
-                extra = (f" | pièces {sum(e['coins'] for e in last) / len(last):4.1f}"
+            if cfg.level.startswith("full"):    # route A
+                k = len(last)
+                extra = (f" | pièces {sum(e['coins'] for e in last) / k:4.1f}"
                          f" | salle bonus "
-                         f"{sum(e['bonus'] > 0 for e in last) / len(last):4.0%}")
+                         f"{sum(e['bonus'] > 0 for e in last) / k:4.0%}"
+                         f" | champi. "
+                         f"{sum(e['mushrooms'] > 0 for e in last) / k:4.0%}"
+                         f" | fleur "
+                         f"{sum(e['flowers'] > 0 for e in last) / k:4.0%}")
             log(f"[graine {cfg.seed}] pas {self.num_timesteps:>9}/{cfg.steps} "
                 f"| épisode {n:>6} | victoires (100 dern.) "
                 f"{sum(e['win'] for e in last) / len(last):6.1%} | retour "

@@ -35,7 +35,7 @@ class GameConfig:
                  bonus_room=True, hidden_1up=True, start_status=0,
                  halfway=True, end_sequence=True, timer=True,
                  segment_order=None, timer_frames=C.GAME_TIMER_TICK,
-                 scroll_back=False):
+                 scroll_back=False, extra_blocks=()):
         self.lives = lives              # nombre de vies (3 comme l'original)
         self.blocks = blocks            # briques / blocs ? (v2 de l'article)
         self.enemies = enemies          # Goombas + Koopa (v3 de l'article)
@@ -54,6 +54,9 @@ class GameConfig:
         self.timer_frames = timer_frames
         # la caméra suit aussi Mario vers la gauche (absent du jeu NES)
         self.scroll_back = scroll_back
+        # blocs ajoutés au niveau original : ((colonne, rangée, tuile), ...)
+        # ex. un bloc ? power-up tôt dans le niveau (niveau « full_a »)
+        self.extra_blocks = tuple(extra_blocks)
 
 
 class Game:
@@ -80,6 +83,7 @@ class Game:
             "koopas_killed": 0, "powerups": 0, "one_ups": 0, "deaths": 0,
             "shells_kicked": 0, "fireballs": 0, "bonus_room": 0,
             "flag_points": 0, "jumps": 0, "hidden_blocks": 0,
+            "mushrooms": 0, "flowers": 0, "powerup_blocks": 0,
         }
 
     def _build_grid(self, area):
@@ -94,6 +98,9 @@ class Game:
                 for col, row, kind in L.BLOCKS:
                     if kind == C.HIDDEN_1UP:
                         grid[row, col] = C.EMPTY
+            if self.cfg.blocks:
+                for col, row, kind in self.cfg.extra_blocks:
+                    grid[row, col] = kind
         else:
             grid = L.build_bonus_room()
         return grid
@@ -706,6 +713,7 @@ class Game:
             self._block_coin(col, row)
         elif t in (C.QBLOCK_POWERUP, C.BRICK_POWERUP):
             final = C.USED
+            self.stats["powerup_blocks"] += 1
             if t == C.QBLOCK_POWERUP:
                 self.stats["qblocks_hit"] += 1
             if self.cfg.powerups:
@@ -812,6 +820,8 @@ class Game:
             self._add_score(ONE_UP, cx, cy)
             return
         self.stats["powerups"] += 1
+        if e.kind in ("mushroom", "flower"):
+            self.stats[e.kind + "s"] += 1
         self._add_score(1000, cx, cy)
         if e.kind == "star":
             p.star_timer = C.STAR_DURATION

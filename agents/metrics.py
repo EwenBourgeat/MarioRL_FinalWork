@@ -65,6 +65,9 @@ def article_metrics(history, last=LAST, window=WINDOW):
             "bonus_rate": float((tail["bonus"] > 0).mean()),
             "powerups": float(tail["powerups"].mean())}
            if "coins" in history else {}),
+        **({"mushroom_rate": float((tail["mushrooms"] > 0).mean()),
+            "flower_rate": float((tail["flowers"] > 0).mean())}
+           if "mushrooms" in history else {}),
     }
 
 
@@ -87,13 +90,18 @@ def format_metrics(m, level, greedy=None, algo=None):
     else:
         lines.append(f"  Briques cassées / épisode   : {m['bricks']:.2f}")
         lines.append(f"  Blocs ? frappés / épisode   : {m['qblocks']:.2f}")
-        if level in ("v3", "full"):
+        if level in ("v3", "full", "full_a"):
             lines.append(f"  Ennemis vaincus / épisode   : {m['enemies']:.2f}")
-    if "coins" in m and level == "full":
+    if "coins" in m and level.startswith("full"):
         lines += [
             f"  Pièces / épisode            : {m['coins']:.2f}",
             f"  Passages par la salle bonus : {m['bonus_rate']:.1%}",
             f"  Champignons/fleurs/étoiles  : {m['powerups']:.2f} / épisode",
+        ]
+    if "mushroom_rate" in m and level.startswith("full"):
+        lines += [
+            f"  Parties avec champignon     : {m['mushroom_rate']:.1%}",
+            f"  Parties avec fleur          : {m['flower_rate']:.1%}",
         ]
     lines += [
         "Autres repères :",
@@ -118,10 +126,11 @@ def format_metrics(m, level, greedy=None, algo=None):
         line = (f"Test glouton (ε = 0)    : {verdict} en {greedy['steps']} "
                 f"pas, retour {greedy['return']:.1f}, colonne "
                 f"{greedy['max_col']}")
-        if "coins" in m and level == "full":
+        if "coins" in m and level.startswith("full"):
             line += (f", salle bonus {'oui' if greedy.get('bonus') else 'non'}"
                      f", {greedy.get('coins', 0)} pièces, "
-                     f"{greedy.get('powerups', 0)} power-up(s)")
+                     f"champignon {'oui' if greedy.get('mushrooms') else 'non'}"
+                     f", fleur {'oui' if greedy.get('flowers') else 'non'}")
         lines.append(line)
     return "\n".join(lines)
 
@@ -146,12 +155,16 @@ def format_summary(metrics_list, level):
     if level != "v1":
         rows += [("Briques / épisode", "bricks", "f2"),
                  ("Blocs ? / épisode", "qblocks", "f2")]
-    if level in ("v3", "full"):
+    if level in ("v3", "full", "full_a"):
         rows.append(("Ennemis / épisode", "enemies", "f2"))
-    if level == "full" and all("coins" in m for m in metrics_list):
+    if level.startswith("full") and all("coins" in m for m in metrics_list):
         rows += [("Pièces / épisode", "coins", "f2"),
                  ("Salle bonus", "bonus_rate", "pct"),
                  ("Power-ups / épisode", "powerups", "f2")]
+    if level.startswith("full") and all("mushroom_rate" in m
+                                        for m in metrics_list):
+        rows += [("Champignon", "mushroom_rate", "pct"),
+                 ("Fleur", "flower_rate", "pct")]
     lines = [f"Résumé sur {n} graines (moyenne ± écart-type) :"]
     for label, key, fmt in rows:
         mean, std, k = mean_std([m[key] for m in metrics_list])

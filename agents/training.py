@@ -50,7 +50,7 @@ HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
                   "epsilon", "bricks", "qblocks", "enemies", "jumps",
                   "n_states")
 # en plus sur le vrai jeu NES (PPO) : pièces, salle bonus, power-ups
-NES_FIELDS = ("coins", "bonus", "powerups")
+NES_FIELDS = ("coins", "bonus", "powerups", "mushrooms", "flowers")
 
 
 @dataclass
@@ -206,7 +206,9 @@ def _summary(info, total, max_col, truncated):
             "enemies": st["enemies_killed"], "jumps": st["jumps"],
             # vrai jeu NES seulement (0 sur MarioGrid)
             "coins": st.get("coins", 0), "bonus": st.get("bonus_room", 0),
-            "powerups": st.get("powerups", 0)}
+            "powerups": st.get("powerups", 0),
+            "mushrooms": st.get("mushrooms", 0),
+            "flowers": st.get("flowers", 0)}
 
 
 def greedy_test(env, agent, seed=0):
@@ -240,7 +242,9 @@ def robustness_test(env, agent, seed=0, episodes=50, epsilon=0.02):
             "avg_return": sum(r["return"] for r in res) / n,
             "death_rate": sum(r["dead"] for r in res) / n,
             "bonus_rate": sum(r["bonus"] > 0 for r in res) / n,
-            "avg_coins": sum(r["coins"] for r in res) / n}
+            "avg_coins": sum(r["coins"] for r in res) / n,
+            "mushroom_rate": sum(r["mushrooms"] > 0 for r in res) / n,
+            "flower_rate": sum(r["flowers"] > 0 for r in res) / n}
 
 
 def train(cfg: TrainConfig, log=print):
