@@ -58,6 +58,12 @@ def build_parser():
                    help="PPO : parties jouées en parallèle par graine")
     p.add_argument("--ent-coef", type=float, default=d.ent_coef,
                    help="PPO : bonus de curiosité (entropie), ex. 0.01")
+    p.add_argument("--start-col", type=int, default=d.start_col,
+                   help="PPO : départ varié, colonne de départ (ex. 18)")
+    p.add_argument("--start-prob", type=float, default=d.start_prob,
+                   help="PPO : part des parties d'entraînement qui partent "
+                        "de --start-col (ex. 0.5) ; les tests partent "
+                        "toujours du début")
     p.add_argument("--eval-steps", type=int, default=d.eval_steps,
                    help="PPO : test glouton tous les N pas")
     p.add_argument("--log-steps", type=int, default=d.log_steps,
@@ -183,6 +189,8 @@ def main(argv=None):
                            n_envs=args.n_envs,
                            eval_steps=args.eval_steps,
                            ent_coef=args.ent_coef,
+                           start_col=args.start_col,
+                           start_prob=args.start_prob,
                            log_steps=args.log_steps).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":

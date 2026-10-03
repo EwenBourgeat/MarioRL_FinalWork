@@ -87,6 +87,24 @@ def make_nes_env(level="v3", obs="vector", actions="right_only",
                                  **kwargs))
 
 
+class VariedStart(gym.Wrapper):
+    """Départ varié (curriculum) : avec la probabilité ``prob``, la partie
+    commence à la colonne ``col`` au lieu du début du niveau.  Sert à faire
+    rencontrer souvent un endroit rare (ex. le bloc du champignon)."""
+
+    def __init__(self, env, col, prob, seed=0):
+        super().__init__(env)
+        self.col, self.prob = col, prob
+        self.rng = random.Random(seed)
+
+    def reset(self, **kwargs):
+        if self.rng.random() < self.prob:
+            options = dict(kwargs.pop("options", None) or {},
+                           start_col=self.col)
+            return self.env.reset(options=options, **kwargs)
+        return self.env.reset(**kwargs)
+
+
 class EpisodeRecorder(gym.Wrapper):
     """Note le résumé de chaque partie terminée dans ``sink`` (une liste)."""
 
@@ -196,10 +214,14 @@ def train_ppo(cfg, log=print):
     torch.set_num_threads(cfg.threads)
     episodes = []                       # résumés des parties terminées
 
-    def factory():
-        return EpisodeRecorder(make_env(cfg), episodes)
+    def factory(i):
+        env = make_env(cfg)
+        if cfg.start_col and cfg.start_prob > 0:
+            env = VariedStart(env, cfg.start_col, cfg.start_prob,
+                              cfg.seed * 100 + i)
+        return EpisodeRecorder(env, episodes)
 
-    venv = DummyVecEnv([factory for _ in range(cfg.n_envs)])
+    venv = DummyVecEnv([lambda i=i: factory(i) for i in range(cfg.n_envs)])
     settings = dict(PPO_SETTINGS, ent_coef=cfg.ent_coef)
     model = PPO("MlpPolicy", venv, learning_rate=cfg.lr, gamma=cfg.gamma,
                 seed=cfg.seed, device="cpu", verbose=0, **settings)

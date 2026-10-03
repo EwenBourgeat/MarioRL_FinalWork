@@ -217,3 +217,19 @@ def test_flower_block_does_nothing_for_small_mario():
     assert g.stats["powerup_blocks"] == 0 and total < 15   # pas de +25
     assert g.grid[9, 34] == C.QBLOCK_POWERUP     # toujours disponible
     assert not [e for e in g.enemies if e.is_item]
+
+
+def test_varied_start_only_in_training():
+    from agents.ppo import VariedStart
+    env = VariedStart(make_nes_env(level="full_a", obs="vector_plus",
+                                   actions="right_down", reward="route_a2"),
+                      18, 0.5, seed=0)
+    cols = [env.reset(seed=i)[1]["col"] for i in range(40)]
+    assert set(cols) == {cols[0], 18} or set(cols) >= {18}
+    assert 8 <= cols.count(18) <= 32           # environ la moitié
+    pytest.importorskip("stable_baselines3")
+    cfg = ppo_config(level="full_a", obs="vector_plus", actions="right_down",
+                     reward="route_a2", start_col=18, start_prob=0.5,
+                     eval_steps=512)
+    agent, history, tests, final, _ = train(cfg, log=None)
+    assert tests and final["steps"] > 0        # tests depuis le vrai début

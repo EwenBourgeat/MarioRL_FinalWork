@@ -87,6 +87,10 @@ class TrainConfig:
     actions: str = "paper"         # boutons du vrai jeu (ex. "right_only")
     reward: str = "paper"          # récompense du vrai jeu ("route_a"...)
     ent_coef: float = 0.0          # PPO : bonus de curiosité (entropie)
+    # PPO, départ varié : une partie d'entraînement sur start_prob commence
+    # à la colonne start_col (les tests partent toujours du vrai début)
+    start_col: int = 0
+    start_prob: float = 0.0
     steps: int = 0                 # PPO : nombre total de pas
     n_envs: int = 2                # PPO : parties jouées en parallèle
     eval_steps: int = 100_000      # PPO : test glouton tous les N pas
