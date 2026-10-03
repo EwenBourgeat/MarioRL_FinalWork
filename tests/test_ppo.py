@@ -97,3 +97,11 @@ def test_tabular_agent_runs_on_the_real_game():
     assert default_name("qlearning", "v3", 42, 3, nes=True) == (
         "qlearning_nes_v3_s42_3ep")
     assert np.isfinite(final["return"])
+
+
+def test_ppo_logs_every_n_steps():
+    pytest.importorskip("stable_baselines3")
+    logs = []
+    train(ppo_config(log_steps=256, eval_steps=0), log=logs.append)
+    assert len(logs) == 4                     # 1024 pas / 256
+    assert " 256/1024 " in logs[0] and "pas/s" in logs[0]

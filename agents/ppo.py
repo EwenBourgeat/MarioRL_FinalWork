@@ -204,24 +204,30 @@ def train_ppo(cfg, log=print):
     t0 = time.perf_counter()
 
     class Progress(BaseCallback):
-        next_log = cfg.log_every
+        # un retour tous les N pas (cfg.log_steps) ou tous les N épisodes
+        next_log = cfg.log_steps or cfg.log_every
         next_eval = cfg.eval_steps
 
         def _on_step(self):
             n = len(episodes)
-            if log and cfg.log_every and n >= self.next_log:
-                self.next_log += cfg.log_every
-                last = episodes[-100:]
-                log(f"[graine {cfg.seed}] épisode {n:>6} | pas "
-                    f"{self.num_timesteps:>9}/{cfg.steps} | victoires (100 "
-                    f"dern.) {sum(e['win'] for e in last) / len(last):6.1%} "
-                    f"| retour moyen "
-                    f"{sum(e['return'] for e in last) / len(last):7.1f} | "
-                    f"{time.perf_counter() - t0:6.1f} s")
+            every = cfg.log_steps or cfg.log_every
+            done = self.num_timesteps if cfg.log_steps else n
+            if log and every and done >= self.next_log:
+                self.next_log += every
+                self._log(n)
             if cfg.eval_steps and self.num_timesteps >= self.next_eval:
                 self.next_eval += cfg.eval_steps
                 self._evaluate(n)
             return True
+
+        def _log(self, n):
+            last = episodes[-100:] or [{"win": 0, "return": 0.0}]
+            sec = time.perf_counter() - t0
+            log(f"[graine {cfg.seed}] pas {self.num_timesteps:>9}/{cfg.steps} "
+                f"| épisode {n:>6} | victoires (100 dern.) "
+                f"{sum(e['win'] for e in last) / len(last):6.1%} | retour "
+                f"moyen {sum(e['return'] for e in last) / len(last):7.1f} | "
+                f"{sec:6.1f} s ({self.num_timesteps / sec:5.0f} pas/s)")
 
         def _evaluate(self, n):
             nonlocal best

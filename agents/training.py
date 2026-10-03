@@ -86,6 +86,8 @@ class TrainConfig:
     steps: int = 0                 # PPO : nombre total de pas
     n_envs: int = 2                # PPO : parties jouées en parallèle
     eval_steps: int = 100_000      # PPO : test glouton tous les N pas
+    log_steps: int = 0             # PPO : un retour tous les N pas (0 =
+                                   # tous les log_every épisodes)
 
     def as_dict(self):
         return asdict(self)

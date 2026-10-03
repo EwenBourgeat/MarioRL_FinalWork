@@ -50,6 +50,9 @@ def build_parser():
                    help="PPO : parties jouées en parallèle par graine")
     p.add_argument("--eval-steps", type=int, default=d.eval_steps,
                    help="PPO : test glouton tous les N pas")
+    p.add_argument("--log-steps", type=int, default=d.log_steps,
+                   help="PPO : un retour tous les N pas (ex. 10000) au lieu "
+                        "de tous les --log-every épisodes")
     p.add_argument("--episodes", type=int, default=d.episodes)
     p.add_argument("--seeds", type=int, nargs="+", default=[d.seed],
                    help="une ou plusieurs graines, ex. 42 43 44 45 46")
@@ -159,7 +162,8 @@ def main(argv=None):
                            actions=args.actions,
                            steps=args.steps if args.algo == "ppo" else 0,
                            n_envs=args.n_envs,
-                           eval_steps=args.eval_steps).as_dict()
+                           eval_steps=args.eval_steps,
+                           log_steps=args.log_steps).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
         # Monte Carlo n'a pas d'alpha : chaque note est une moyenne (1/N)
