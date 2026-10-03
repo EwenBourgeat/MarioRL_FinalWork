@@ -120,19 +120,23 @@ def _route_a_env():
 def test_route_a_buttons_view_and_pipe_reward():
     env = _route_a_env()
     obs, _ = env.reset(seed=0, options={"start_col": 57})
-    assert env.action_space.n == 6 and obs.shape == (87,)
+    assert env.action_space.n == 6 and obs.shape == (91,)
     env.game.p.x = 918                  # centré sur le tuyau de la colonne 57
     o = env._obs()
-    assert abs(o[-2]) < 0.1 and o[-1] == 0   # entrée ~ 0, pas de sortie
+    assert abs(o[-6]) < 0.1 and o[-5] == 0   # entrée ~ 0, pas de sortie
+    assert list(o[-4:]) == [0, 0, 0, 0]      # aucun bouton appuyé
     total = 0.0
     for a in [0, 5, 5, 5] + [0] * 20:   # bas : on entre dans le tuyau
         obs, r, term, trunc, info = env.step(a)
         total += r
     assert info["area"] == "bonus" and info["stats"]["bonus_room"] == 1
     assert total > 190                  # +200 pour l'entrée
+    assert list(obs[-4:]) == [0, 0, 0, 0]    # dernier bouton : rien
     coins = obs[66:81].reshape(5, 3)
     assert coins[:, 2].sum() == 5       # 5 pièces visibles dans la salle
-    assert obs[-2] == 0 and obs[-1] > 1  # dans la salle : la sortie, à droite
+    assert obs[-6] == 0 and obs[-5] > 1  # dans la salle : la sortie, à droite
+    obs, _, _, _, _ = env.step(4)       # droite + saut + course
+    assert list(obs[-4:]) == [1, 1, 1, 0]
     k = 0
     while info["area"] == "bonus" and k < 800:
         obs, r, term, trunc, info = env.step(2 if k % 10 < 7 else 1)

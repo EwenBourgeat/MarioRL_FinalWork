@@ -38,7 +38,11 @@ QBLOCK_LUT[[C.QBLOCK_COIN, C.QBLOCK_POWERUP]] = True
 WARP_X = L.WARP_PIPE_COL * C.TILE + 8
 # dans la salle bonus : Mario contre l'embouchure du tuyau de sortie (col. 13)
 BONUS_EXIT_X = 13 * C.TILE - 8
-N_PLUS_FEATURES = 4 + 3 * N_COIN_FEATURES + 4 + 2
+# boutons appuyés au pas précédent : la NES ne relance un saut (ou l'entrée
+# d'un tuyau) que sur un NOUVEL appui ; sans cette information, une politique
+# sans hasard peut rester bloquée en maintenant le même bouton
+HELD_BUTTONS = (C.BTN_RIGHT, C.BTN_A, C.BTN_B, C.BTN_DOWN)
+N_PLUS_FEATURES = 4 + 3 * N_COIN_FEATURES + 4 + 2 + len(HELD_BUTTONS)
 
 
 class MarioNESEnv(gym.Env):
@@ -108,6 +112,7 @@ class MarioNESEnv(gym.Env):
         self._clock = None
         self._steps = 0
         self._prev = None
+        self._held = 0                  # boutons du pas précédent
         # fonction appelée après chaque image NES (ex. pour afficher une
         # partie image par image dans le menu MODELES)
         self.frame_hook = None
@@ -155,6 +160,7 @@ class MarioNESEnv(gym.Env):
                 x = int(options["start_col"]) * C.TILE
             self._teleport(int(x))
         self._steps = 0
+        self._held = 0
         if self.noop_max:
             for _ in range(int(self.np_random.integers(0, self.noop_max + 1))):
                 self.game.step(0)
@@ -182,6 +188,7 @@ class MarioNESEnv(gym.Env):
     def step(self, action):
         g = self.game
         buttons = self._buttons[int(action)]
+        self._held = buttons
         human = self.render_mode == "human"
         for _ in range(self.frame_skip):
             g.step(buttons)
@@ -415,6 +422,7 @@ class MarioNESEnv(gym.Env):
         bonus = g.area == "bonus"
         v.append(0.0 if bonus else (WARP_X - p.x) / 64.0)
         v.append((BONUS_EXIT_X - p.x) / 64.0 if bonus else 0.0)
+        v += [float(bool(self._held & b)) for b in HELD_BUTTONS]
         extra = np.clip(np.asarray(v, dtype=np.float32), -4.0, 4.0)
         return np.concatenate([self._obs_vector(), extra])
 

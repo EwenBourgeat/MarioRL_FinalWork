@@ -490,7 +490,9 @@ Pour apprendre à Mario à passer par le tuyau de la colonne 57, ramasser les
 * `--obs vector_plus` : la vue `vector` + l'objet le plus proche
   (champignon...), les 5 pièces les plus proches, le bloc ? devant Mario et
   les distances au tuyau d'entrée (dehors) et au tuyau de sortie (dans la
-  salle bonus), dans deux cases séparées, soit 87 nombres ;
+  salle bonus), et les boutons appuyés au pas précédent (droite, saut,
+  course, bas : la NES ne relance un saut que sur un nouvel appui), soit 91
+  nombres ;
 * `--reward route_a` : pièce +10, entrée dans la salle bonus +200,
   champignon / fleur / étoile +50, −0,5 par seconde du chrono (ennemi +5,
   drapeau +100, mort −50). L'avancée est comptée sur la **position la plus
