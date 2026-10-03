@@ -24,14 +24,18 @@ from .montecarlo import MonteCarloAgent
 AGENT_CLASSES = {"qlearning": QLearningAgent, "sarsa": SarsaAgent,
                  "montecarlo": MonteCarloAgent}
 ALGO_NAMES = {"qlearning": "Q-Learning", "sarsa": "SARSA",
-              "montecarlo": "Monte Carlo", "dqn": "DQN"}
+              "montecarlo": "Monte Carlo", "dqn": "DQN", "ppo": "PPO"}
 
 
 def agent_class(algo):
-    """Classe de l'agent ; DQN n'est importé que si on s'en sert (PyTorch)."""
+    """Classe de l'agent ; DQN et PPO ne sont importés que si on s'en sert
+    (PyTorch, Stable-Baselines3)."""
     if algo == "dqn":
         from .dqn import DQNAgent
         return DQNAgent
+    if algo == "ppo":
+        from .ppo import PPOAgent
+        return PPOAgent
     if algo not in AGENT_CLASSES:
         raise ValueError(f"algorithme inconnu : {algo!r}")
     return AGENT_CLASSES[algo]
@@ -76,12 +80,23 @@ class TrainConfig:
     lr: float = 1e-4               # DQN : vitesse d'apprentissage (Adam)
     variant: Optional[str] = None  # étiquette de l'expérience (ex. "E1")
     log_every: int = 500
+    # --- vrai jeu NES et PPO ---
+    env: str = "grid"              # "grid" (article) ou "nes" (vrai jeu)
+    actions: str = "paper"         # boutons du vrai jeu (ex. "right_only")
+    steps: int = 0                 # PPO : nombre total de pas
+    n_envs: int = 2                # PPO : parties jouées en parallèle
+    eval_steps: int = 100_000      # PPO : test glouton tous les N pas
 
     def as_dict(self):
         return asdict(self)
 
 
 def make_env(cfg):
+    if cfg.env == "nes":
+        from .ppo import make_nes_env
+        return make_nes_env(level=cfg.level, obs=cfg.obs,
+                            actions=cfg.actions, max_steps=cfg.max_steps,
+                            segments=cfg.segments)
     return MarioGridEnv(level=cfg.level, max_steps=cfg.max_steps,
                         segment_order=cfg.segments, obs=cfg.obs)
 
@@ -221,7 +236,11 @@ def train(cfg: TrainConfig, log=print):
     """Entraîne un agent (Q-Learning, SARSA ou Monte Carlo selon ``cfg.algo``).
 
     Renvoie (agent, historique, tests gloutons, test final, durée en s).
+    PPO (vrai jeu NES) a sa propre boucle : voir ppo.train_ppo.
     """
+    if cfg.algo == "ppo":
+        from .ppo import train_ppo
+        return train_ppo(cfg, log)
     cls = agent_class(cfg.algo)
     env = make_env(cfg)
     env.reset(seed=cfg.seed)
@@ -310,6 +329,9 @@ def run_seed(cfg_dict):
     cfg = TrainConfig(**cfg_dict)
     agent, history, tests, final, seconds = train(
         cfg, log=lambda msg: print(msg, flush=True))
+    if cfg.algo == "ppo":
+        # PPO compte en pas : on note le nombre de parties jouées
+        cfg_dict = dict(cfg_dict, episodes=len(history["win"]))
     if hasattr(agent, "detach_for_transfer"):
         # DQN : réseau ramené sur le processeur avant de quitter ce
         # processus (sinon, depuis la carte graphique, on perd les poids)

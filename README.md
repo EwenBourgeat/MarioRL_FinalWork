@@ -333,7 +333,7 @@ d'un run de l'article (v3) demandent de l'ordre d'une minute de simulation avec
 
 ---
 
-## 7. Nos agents : Q-Learning, SARSA et Monte Carlo
+## 7. Nos agents : Q-Learning, SARSA, Monte Carlo, DQN et PPO
 
 ### Lancer un entraînement
 
@@ -451,6 +451,34 @@ python train.py --algo dqn --level v3 --episodes 6000 --seeds 42 43 \
     --obs full --cnn --grad-clip 10 --keep-best --variant E3 --device auto
 ```
 
+### PPO sur le vrai jeu NES
+
+PPO (*Proximal Policy Optimization*, bibliothèque Stable-Baselines3) apprend
+directement la **probabilité d'appuyer sur chaque bouton** (réseau « acteur »)
+et un second réseau qui estime si la situation est bonne (« critique »). Il
+joue sur le **vrai jeu** (`MarioNES-v0`, physique NES) :
+
+* vue `vector` : 62 nombres (position, vitesses, 5 ennemis les plus proches,
+  relief des 16 colonnes devant Mario) ;
+* boutons `right_only` : rien, →, → + saut, → + course, → + saut + course
+  (avec les 3 boutons de l'article, Mario ne passe pas les grands tuyaux) ;
+* 1 pas = 4 images NES (1/15 s), parties limitées à 1000 pas ;
+* 2 parties en parallèle par graine, 512 pas chacune avant chaque
+  apprentissage, `--keep-best` garde la meilleure version (test glouton tous
+  les 100 000 pas, puis mini-test de 30 parties).
+
+```bash
+pip install -r requirements-dqn.txt          # torch, codecarbon, stable-baselines3
+python train.py --algo ppo --level v3 --steps 200000 --seeds 42 --keep-best   # essai
+python train.py --algo ppo --level v3 --steps 3000000 --seeds 42 43 44 45 46 \
+    --keep-best --carbon
+```
+
+Le modèle (`models/ppo_nes_v3_s42_3m/ppo.zip`) se regarde dans le menu
+**MODELES → PPO**, avec les graphismes du jeu (x1 = 60 images/s). Les
+méthodes à tableau peuvent aussi jouer sur le vrai jeu, pour comparer :
+`python train.py --algo qlearning --env nes --level v3 --episodes 30000`.
+
 ### Utiliser l'agent dans son propre code
 
 ```python
@@ -482,11 +510,13 @@ agents/
   qlearning.py     agent Q-Learning (Q-table, epsilon-greedy, mise à jour)
   sarsa.py         agent SARSA (même Q-table, autre mise à jour)
   montecarlo.py    agent Monte Carlo (mise à jour en fin de partie, 1/N)
+  dqn.py           agent DQN (réseau de neurones, mémoire de replay)
+  ppo.py           agent PPO sur le vrai jeu (Stable-Baselines3)
   training.py      boucle d'entraînement et test glouton
   metrics.py       mesures de l'article et courbes
   registry.py      sauvegarde / liste des modèles (dossier models/)
 models/            modèles entraînés (lus par le menu MODELES)
-train.py           lancer un entraînement (--algo qlearning, sarsa ou montecarlo)
+train.py           lancer un entraînement (--algo qlearning, sarsa, montecarlo, dqn, ppo)
 train_qlearning.py raccourci pour train.py --algo qlearning
 scripts/           benchmark.py, export_images.py (figures pour le rapport)
 tests/             tests automatiques (pytest)

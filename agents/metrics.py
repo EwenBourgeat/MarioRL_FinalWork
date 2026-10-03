@@ -90,10 +90,17 @@ def format_metrics(m, level, greedy=None, algo=None):
         f"  Morts / temps écoulé    : {m['death_rate']:.1%} / "
         f"{m['timeout_rate']:.1%}",
         f"  Pas par épisode         : {m['avg_steps']:.1f}",
-        f"  Epsilon final           : {m['epsilon_end']:.3f}",
-        (f"  Pas en mémoire (replay) : {m['n_states']}" if algo == "dqn" else
-         f"  États dans la Q-table   : {m['n_states']}"),
     ]
+    if algo == "ppo":
+        # PPO n'a pas d'epsilon : il tire ses boutons au sort selon sa
+        # politique ; pas de Q-table ni de mémoire de replay
+        lines.append(f"  Pas d'entraînement      : {m['n_states']}")
+    else:
+        lines += [
+            f"  Epsilon final           : {m['epsilon_end']:.3f}",
+            (f"  Pas en mémoire (replay) : {m['n_states']}" if algo == "dqn"
+             else f"  États dans la Q-table   : {m['n_states']}"),
+        ]
     if greedy is not None:
         verdict = ("VICTOIRE" if greedy["win"] else
                    "mort" if greedy["dead"] else "temps écoulé")
@@ -170,8 +177,9 @@ def _style(ax, title, ylabel):
     ax.tick_params(colors=INK_2, labelsize=8)
 
 
-def plot_curves(history, tests, path, title, flag_col=198):
-    """Quatre graphiques : victoires, retour, distance, epsilon.
+def plot_curves(history, tests, path, title, flag_col=198, epsilon=True):
+    """Quatre graphiques : victoires, retour, distance, epsilon (ou, pour
+    PPO qui n'a pas d'epsilon, ``epsilon=False`` : taux de mort).
 
     Les trois premiers sont des moyennes glissantes sur 100 épisodes : un
     épisode seul est très bruité (l'exploration fait souvent mourir Mario).
@@ -233,13 +241,21 @@ def plot_curves(history, tests, path, title, flag_col=198):
                 linewidth=2)
     ax.set_ylim(0, flag_col + 22)
 
-    # 4) exploration
+    # 4) exploration (ou taux de mort pour PPO)
     ax = axes[1, 1]
-    _style(ax, "Exploration ε (probabilité de jouer au hasard)", "ε")
-    ax.plot(ep, history["epsilon"], color=SERIES_1, linewidth=2)
+    if epsilon:
+        _style(ax, "Exploration ε (probabilité de jouer au hasard)", "ε")
+        ax.plot(ep, history["epsilon"], color=SERIES_1, linewidth=2)
+        ax.text(n, history["epsilon"][-1] + 0.03,
+                f"{history['epsilon'][-1]:.3f}", color=INK_2, fontsize=8,
+                ha="right", va="bottom")
+    else:
+        _style(ax, "Morts (100 épisodes)", "part des parties perdues")
+        if len(roll_ep):
+            ax.plot(roll_ep, rolling_mean(history["dead"]), color=SERIES_1,
+                    linewidth=2)
+        ax.yaxis.set_major_formatter(PercentFormatter(1.0))
     ax.set_ylim(0, 1.05)
-    ax.text(n, history["epsilon"][-1] + 0.03, f"{history['epsilon'][-1]:.3f}",
-            color=INK_2, fontsize=8, ha="right", va="bottom")
 
     for ax in axes.flat:
         ax.set_xlim(0, n + 1)

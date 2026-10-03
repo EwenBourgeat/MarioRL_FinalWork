@@ -123,6 +123,40 @@ def test_models_menu_watch_agent(tmp_path, monkeypatch):
     assert tuple(app.last_frame[120, 30]) == (0xC8, 0x4C, 0x0C)
 
 
+def test_models_menu_watch_ppo_on_the_real_game(tmp_path, monkeypatch):
+    pytest.importorskip("stable_baselines3")
+    from agents.metrics import article_metrics
+    from agents.registry import save_model
+    from agents.training import TrainConfig, train
+
+    k = pygame
+    cfg = TrainConfig(algo="ppo", env="nes", obs="vector",
+                      actions="right_only", level="v3", steps=1024,
+                      eval_steps=0, log_every=0, lr=3e-4, seed=42)
+    agent, history, tests, final, _ = train(cfg, log=None)
+    meta = dict(cfg.as_dict(), env="MarioNES-v0",
+                episodes=len(history["win"]),
+                metrics=article_metrics(history), greedy=final)
+    path = save_model(agent, meta, history, tests, root=tmp_path)
+    monkeypatch.setenv("MARIO_MODELS_DIR", str(tmp_path))
+    script = {
+        5: [k.K_UP, k.K_UP],        # MODELES
+        6: [k.K_RETURN],
+        8: [k.K_DOWN, k.K_DOWN, k.K_DOWN, k.K_DOWN],   # PPO
+        9: [k.K_RETURN],
+        11: [k.K_RETURN],           # le modèle joue sur le vrai jeu
+        13: [k.K_RETURN],           # passer l'écran WORLD 1-1
+        15: [k.K_RIGHT, k.K_RIGHT, k.K_RIGHT],     # vitesse x8
+    }
+    app = make_app(script, max_frames=2500)
+    app.run_title()
+    expected = ("THANK YOU MARIO!" if final["win"] else
+                "GAME OVER" if final["dead"] else "TIME UP")
+    assert app.visited[:4] == ["models", "models_PPO",
+                               "watch_" + path.name, expected]
+    assert tuple(app.last_frame[120, 30]) == (0xC8, 0x4C, 0x0C)
+
+
 def test_models_menu_algorithms_without_models(tmp_path, monkeypatch):
     k = pygame
     monkeypatch.setenv("MARIO_MODELS_DIR", str(tmp_path / "vide"))

@@ -18,6 +18,7 @@ C / J / Z / Maj = courir / boule de feu (B), Entrée = pause,
 import argparse
 import os
 import sys
+from collections import deque
 
 import numpy as np
 
@@ -505,9 +506,12 @@ class App:
         self.visited.append("watch_" + meta["name"])
         try:
             agent = load_agent(meta)
-        except ImportError:             # DQN sans PyTorch installé
-            self._show_message(["PYTORCH MANQUANT", "PIP INSTALL -R",
+        except ImportError:             # DQN / PPO sans PyTorch ou SB3
+            self._show_message(["PYTORCH OU SB3 MANQUANT", "PIP INSTALL -R",
                                 "REQUIREMENTS-DQN.TXT"])
+            return
+        if meta.get("env") == "MarioNES-v0":
+            self.run_watch_nes(meta, agent)
             return
         policy = agent.greedy_policy(meta.get("seed", 0))
         env = MarioGridEnv(level=meta["level"],
@@ -560,6 +564,84 @@ class App:
                     break
             self._present(self.grid_frame(
                 env, ret, message, ai=(label, WATCH_SPEEDS[speed])))
+
+    def run_watch_nes(self, meta, agent):
+        """Le modèle joue sur le vrai jeu NES, image par image (x1 = 60
+        images/s, la vitesse du jeu), avec ses vrais graphismes."""
+        from agents.ppo import make_nes_env
+        from .envs.common import state_key
+
+        env = make_nes_env(level=meta["level"], obs=meta.get("obs", "vector"),
+                           actions=meta.get("actions", "right_only"),
+                           max_steps=meta.get("max_steps", 1000),
+                           segments=meta.get("segments"))
+        nes = env.unwrapped
+        frames = deque()                # images du dernier pas, à afficher
+        nes.frame_hook = lambda: frames.append(nes.renderer.render().copy())
+        policy = agent.greedy_policy(meta.get("seed", 0))
+        obs, _ = env.reset()
+        shown = nes.renderer.render().copy()
+        label = meta.get("label", meta["name"]).upper()
+        speed = 0
+        phase = "intermission"
+        phase_timer = INTERMISSION_FRAMES
+        message = None
+        ending = 0                      # images de l'animation de fin
+        while self._tick():
+            actions = self._actions()
+            if "back" in actions or self.closed:
+                break
+            if "right" in actions:
+                speed = min(speed + 1, len(WATCH_SPEEDS) - 1)
+            if "left" in actions:
+                speed = max(speed - 1, 0)
+            if phase == "intermission":
+                frame = self.title_renderer.render_message(None, lives=1)
+                phase_timer -= 1
+                if phase_timer <= 0 or "start" in actions:
+                    phase = "play"
+                self._present(frame)
+                continue
+            if phase == "play":
+                for _ in range(WATCH_SPEEDS[speed]):
+                    if frames:
+                        shown = frames.popleft()
+                    elif message is None:
+                        obs, r, term, trunc, info = env.step(
+                            policy(state_key(obs)))
+                        if term or trunc:
+                            message = ("THANK YOU MARIO!" if info["win"] else
+                                       "GAME OVER" if info["dead"] else
+                                       "TIME UP")
+                            self.visited.append(message)
+                    elif self._nes_ending(nes.game, ending):
+                        # drapeau puis château, ou chute de Mario
+                        nes.game.step(0)
+                        ending += 1
+                        shown = nes.renderer.render().copy()
+                    else:
+                        phase = "end"
+                        phase_timer = GRID_END_FRAMES
+                        break
+            else:
+                phase_timer -= 1
+                if phase_timer <= 0 or "start" in actions:
+                    break
+            frame = shown.copy()
+            text(frame, label[:22], 24, 40)
+            text(frame, f"x{WATCH_SPEEDS[speed]}", 216, 40)
+            if phase == "end":
+                text(frame, message, 128 - 4 * len(message), 88)
+            self._present(frame)
+
+    @staticmethod
+    def _nes_ending(game, frames_done, limit=900):
+        """Vrai tant qu'une animation de fin reste à montrer."""
+        if frames_done >= limit:
+            return False
+        if game.level_complete:
+            return not game.finished
+        return game.mode == "dying"
 
 
 def build_parser():

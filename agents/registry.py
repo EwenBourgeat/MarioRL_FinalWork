@@ -3,6 +3,7 @@
     models/qlearning_v1_s42_3000ep/
         meta.json     réglages, mesures de l'article, test glouton
         qtable.npz    la Q-table (états + notes), format numpy
+                      (dqn.pt pour DQN, ppo.zip pour PPO)
         history.csv   une ligne par épisode (retour, victoire, epsilon...)
         curves.png    les courbes d'apprentissage
 
@@ -26,12 +27,31 @@ def models_dir(path=None):
 
 # Algorithmes du projet, dans l'ordre du menu MODELES (nom interne, affiché)
 ALGORITHMS = (("qlearning", "Q-LEARNING"), ("sarsa", "SARSA"),
-              ("montecarlo", "MONTE CARLO"), ("dqn", "DQN"))
+              ("montecarlo", "MONTE CARLO"), ("dqn", "DQN"), ("ppo", "PPO"))
+
+# Fichier du modèle selon l'algorithme (Q-table, réseau DQN, modèle PPO)
+MODEL_FILES = ("qtable.npz", "dqn.pt", "ppo.zip")
+
+
+def steps_text(steps):
+    """3000000 -> "3m", 200000 -> "200k" (noms de dossiers)."""
+    if steps % 1_000_000 == 0:
+        return f"{steps // 1_000_000}m"
+    if steps % 1000 == 0:
+        return f"{steps // 1000}k"
+    return str(steps)
 
 
 def short_label(meta):
     """Nom affiché dans la liste d'un algorithme (sans l'algorithme)."""
-    s = f"{meta['level']} graine {meta['seed']} {meta['episodes']} ep".upper()
+    if meta.get("steps"):               # PPO : compté en pas
+        s = (f"{meta['level']} graine {meta['seed']} "
+             f"{steps_text(meta['steps'])} pas").upper()
+    else:
+        s = (f"{meta['level']} graine {meta['seed']} "
+             f"{meta['episodes']} ep").upper()
+        if meta.get("env") == "MarioNES-v0":
+            s += " NES"
     if meta.get("variant"):
         s += " " + meta["variant"].upper()
     if meta.get("segments"):
@@ -39,8 +59,12 @@ def short_label(meta):
     return s
 
 
-def default_name(algo, level, seed, episodes, segments=None, variant=None):
-    name = f"{algo}_{level}_s{seed}_{episodes}ep"
+def default_name(algo, level, seed, episodes, segments=None, variant=None,
+                 steps=None, nes=False):
+    """Ex. qlearning_v3_s42_6000ep, ppo_nes_v3_s42_3m (vrai jeu NES)."""
+    prefix = f"{algo}_nes" if (nes or steps) else algo
+    size = steps_text(steps) if steps else f"{episodes}ep"
+    name = f"{prefix}_{level}_s{seed}_{size}"
     if variant:
         name += "_" + variant.lower()
     if segments:
@@ -50,8 +74,9 @@ def default_name(algo, level, seed, episodes, segments=None, variant=None):
 
 def label(meta):
     """Nom court affiché dans le menu (majuscules, police NES)."""
-    s = (f"{meta['algo']} {meta['level']} s{meta['seed']} "
-         f"{meta['episodes']}").upper()
+    size = (steps_text(meta["steps"]) if meta.get("steps")
+            else meta["episodes"])
+    s = f"{meta['algo']} {meta['level']} s{meta['seed']} {size}".upper()
     if meta.get("segments"):
         s += " " + meta["segments"].upper()
     return s
@@ -62,7 +87,8 @@ def save_model(agent, meta, history, tests, root=None, name=None,
     root = models_dir(root)
     name = name or default_name(meta["algo"], meta["level"], meta["seed"],
                                 meta["episodes"], meta.get("segments"),
-                                meta.get("variant"))
+                                meta.get("variant"), meta.get("steps"),
+                                meta.get("env") == "MarioNES-v0")
     path = root / name
     if path.exists() and not overwrite:
         i = 2
@@ -99,8 +125,7 @@ def list_models(root=None):
                 meta = json.load(f)
         except (OSError, ValueError):
             continue
-        if not any((meta_file.parent / f).exists()
-                   for f in ("qtable.npz", "dqn.pt")):
+        if not any((meta_file.parent / f).exists() for f in MODEL_FILES):
             continue
         meta["path"] = str(meta_file.parent)
         meta.setdefault("label", label(meta))

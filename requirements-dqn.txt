@@ -1,4 +1,6 @@
-# Dépendance supplémentaire pour DQN (réseau de neurones) :
+# Dépendances supplémentaires pour DQN et PPO (réseaux de neurones) :
 #   pip install -r requirements-dqn.txt
 torch>=2.0
 codecarbon>=2.0
+# PPO (vrai jeu NES) : bibliothèque Stable-Baselines3
+stable-baselines3>=2.3

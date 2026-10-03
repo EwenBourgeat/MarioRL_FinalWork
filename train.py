@@ -1,9 +1,14 @@
-"""Entraîne un agent tabulaire (Q-Learning, SARSA ou Monte Carlo) sur MarioGrid.
+"""Entraîne un agent (Q-Learning, SARSA, Monte Carlo, DQN ou PPO).
 
 Exemples :
     python train.py --algo qlearning --level v1 --episodes 3000 --seeds 42
     python train.py --algo sarsa --level v1 --episodes 6000 --seeds 42
     python train.py --algo sarsa --level v3 --episodes 10000 --seeds 42 43 44 45 46
+    python train.py --algo ppo --level v3 --steps 3000000 --seeds 42 --keep-best
+
+Q-Learning, SARSA, Monte Carlo et DQN jouent sur MarioGrid (l'environnement
+de l'article) ; PPO joue sur le vrai jeu NES (--env nes, automatique).
+Les méthodes à tableau peuvent aussi jouer sur le vrai jeu (--env nes).
 
 Pour chaque graine, le modèle est enregistré dans models/<nom>/ (Q-table,
 mesures, historique, courbes) et apparaît dans le menu MODELES du jeu.
@@ -25,10 +30,26 @@ from agents.training import (ALGO_NAMES, TrainConfig, make_env,
 
 def build_parser():
     d = TrainConfig()
-    p = argparse.ArgumentParser(description="Q-Learning / SARSA / Monte Carlo sur MarioGrid")
+    p = argparse.ArgumentParser(
+        description="Q-Learning / SARSA / Monte Carlo / DQN sur MarioGrid, "
+                    "PPO sur le vrai jeu NES")
     p.add_argument("--algo", choices=sorted(ALGO_NAMES), default=d.algo,
                    help="algorithme (défaut : qlearning)")
-    p.add_argument("--level", choices=["v1", "v2", "v3"], default=d.level)
+    p.add_argument("--level", choices=["v1", "v2", "v3", "full"],
+                   default=d.level,
+                   help="full = jeu complet (vrai jeu NES seulement)")
+    p.add_argument("--env", choices=["grid", "nes"], default=None,
+                   help="grid = environnement de l'article, nes = vrai jeu "
+                        "(défaut : nes pour PPO, grid sinon)")
+    p.add_argument("--actions", default=None,
+                   choices=["paper", "right_only", "simple", "complex"],
+                   help="vrai jeu : boutons (défaut right_only)")
+    p.add_argument("--steps", type=int, default=3_000_000,
+                   help="PPO : nombre total de pas (défaut 3000000)")
+    p.add_argument("--n-envs", type=int, default=d.n_envs,
+                   help="PPO : parties jouées en parallèle par graine")
+    p.add_argument("--eval-steps", type=int, default=d.eval_steps,
+                   help="PPO : test glouton tous les N pas")
     p.add_argument("--episodes", type=int, default=d.episodes)
     p.add_argument("--seeds", type=int, nargs="+", default=[d.seed],
                    help="une ou plusieurs graines, ex. 42 43 44 45 46")
@@ -46,9 +67,9 @@ def build_parser():
                    help="limite de pas par épisode")
     p.add_argument("--eval-every", type=int, default=d.eval_every,
                    help="test glouton tous les N épisodes (0 = jamais)")
-    p.add_argument("--obs", choices=["paper", "full"], default=d.obs,
-                   help="vue de l'agent : paper (article) ou full (vue "
-                        "complète, notre DQN)")
+    p.add_argument("--obs", choices=["paper", "full", "vector"], default=None,
+                   help="vue de l'agent : paper (article), full (vue "
+                        "complète, notre DQN) ou vector (vrai jeu, PPO)")
     p.add_argument("--variant", default=None,
                    help="étiquette de l'expérience, ex. E1 (ajoutée au nom)")
     p.add_argument("--double", action="store_true",
@@ -70,8 +91,9 @@ def build_parser():
                    help="cœurs du processeur par graine (défaut 1)")
     p.add_argument("--buffer-size", type=int, default=d.buffer_size,
                    help="DQN : taille de la mémoire de replay (défaut 50000)")
-    p.add_argument("--lr", type=float, default=d.lr,
-                   help="DQN : vitesse d'apprentissage (défaut 0.0001)")
+    p.add_argument("--lr", type=float, default=None,
+                   help="vitesse d'apprentissage (défaut : 0.0001 pour DQN, "
+                        "0.0003 pour PPO)")
     p.add_argument("--carbon", action="store_true",
                    help="mesurer l'énergie et le CO2 avec CodeCarbon "
                         "(pip install codecarbon)")
@@ -91,10 +113,36 @@ def build_parser():
     return p
 
 
-def main(argv=None):
-    args = build_parser().parse_args(argv)
+def resolve_defaults(parser, args):
+    """Réglages qui dépendent de l'algorithme ou de l'environnement."""
+    if args.env is None:
+        args.env = "nes" if args.algo == "ppo" else "grid"
+    if args.obs is None:
+        args.obs = ("vector" if args.algo == "ppo" else "paper")
+    if args.actions is None:
+        args.actions = "right_only" if args.env == "nes" else "paper"
+    if args.lr is None:
+        args.lr = 3e-4 if args.algo == "ppo" else TrainConfig().lr
     if args.eps_min is None:
         args.eps_min = 0.05 if args.algo == "dqn" else 0.01
+    if args.algo == "ppo" and args.env != "nes":
+        parser.error("PPO joue sur le vrai jeu : --env nes")
+    if args.algo == "ppo" and args.obs != "vector":
+        parser.error("PPO : vue --obs vector")
+    if args.algo == "dqn" and args.env == "nes":
+        parser.error("DQN sur le vrai jeu : pas encore prévu (utiliser PPO)")
+    if args.env == "nes" and args.algo != "ppo" and args.obs != "paper":
+        parser.error("tableaux sur le vrai jeu : vue --obs paper")
+    if args.env == "grid" and (args.level == "full" or args.obs == "vector"):
+        parser.error("--level full et --obs vector : vrai jeu seulement "
+                     "(--env nes)")
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    resolve_defaults(parser, args)
+    nes = args.env == "nes"
     configs = [TrainConfig(algo=args.algo, level=args.level,
                            episodes=args.episodes, seed=s,
                            alpha=args.alpha, gamma=args.gamma,
@@ -107,7 +155,11 @@ def main(argv=None):
                            keep_best=args.keep_best, cnn=args.cnn,
                            device=args.device, threads=args.threads,
                            buffer_size=args.buffer_size, lr=args.lr,
-                           log_every=args.log_every).as_dict()
+                           log_every=args.log_every, env=args.env,
+                           actions=args.actions,
+                           steps=args.steps if args.algo == "ppo" else 0,
+                           n_envs=args.n_envs,
+                           eval_steps=args.eval_steps).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
         # Monte Carlo n'a pas d'alpha : chaque note est une moyenne (1/N)
@@ -115,14 +167,21 @@ def main(argv=None):
             c["alpha"] = None
     alpha_txt = {"montecarlo": "1/N", "dqn": f"lr {args.lr:g} (Adam), "
                  f"mémoire {args.buffer_size}"}.get(args.algo, args.alpha)
-    if args.algo == "dqn":
+    if args.algo in ("dqn", "ppo"):
         for c in configs:
             c["alpha"] = None
-    print(f"{ALGO_NAMES[args.algo]} | MarioGrid {args.level} | "
-          f"{args.episodes} épisodes | "
-          f"graines {', '.join(map(str, args.seeds))} | alpha={alpha_txt} "
-          f"gamma={args.gamma} | ε {args.eps_start} -> x{args.eps_decay} "
-          f"-> {args.eps_min}", flush=True)
+    seeds_txt = ", ".join(map(str, args.seeds))
+    env_txt = (f"MarioNES {args.level} (vrai jeu, vue {args.obs}, boutons "
+               f"{args.actions})" if nes else f"MarioGrid {args.level}")
+    if args.algo == "ppo":
+        print(f"PPO | {env_txt} | {args.steps} pas | graines {seeds_txt} | "
+              f"lr {args.lr:g} (Adam) gamma={args.gamma} | {args.n_envs} "
+              f"parties en parallèle par graine", flush=True)
+    else:
+        print(f"{ALGO_NAMES[args.algo]} | {env_txt} | "
+              f"{args.episodes} épisodes | graines {seeds_txt} | "
+              f"alpha={alpha_txt} gamma={args.gamma} | ε {args.eps_start} "
+              f"-> x{args.eps_decay} -> {args.eps_min}", flush=True)
     tracker = None
     if args.carbon:
         # CodeCarbon mesure toute la machine PENDANT l'entraînement
@@ -175,7 +234,9 @@ def main(argv=None):
                   f"{robust['avg_return']:.1f})")
         if args.no_save:
             continue
-        meta = dict(cfg, env="MarioGrid-v0", robust=robust, carbon=carbon,
+        meta = dict(cfg, env="MarioNES-v0" if nes else "MarioGrid-v0",
+                    robust=robust, carbon=carbon,
+                    best_steps=getattr(agent, "best_steps", None),
                     best_episode=getattr(agent, "best_episode", None),
                     reward="paper", metrics=m, greedy=final,
                     train_seconds=round(seconds, 2))
@@ -183,9 +244,13 @@ def main(argv=None):
         name = args.name if (args.name and len(configs) == 1) else None
         path = save_model(agent, meta, history, tests, name=name,
                           overwrite=args.overwrite)
-        title = (f"{ALGO_NAMES[cfg['algo']]} · MarioGrid {cfg['level']} · graine "
-                 f"{cfg['seed']} · {cfg['episodes']} épisodes")
-        plot_curves(history, tests, path / "curves.png", title)
+        size = (f"{cfg['steps']:,} pas".replace(",", " ")
+                if cfg["algo"] == "ppo" else f"{cfg['episodes']} épisodes")
+        title = (f"{ALGO_NAMES[cfg['algo']]} · "
+                 f"{'MarioNES' if nes else 'MarioGrid'} {cfg['level']} · "
+                 f"graine {cfg['seed']} · {size}")
+        plot_curves(history, tests, path / "curves.png", title,
+                    epsilon=cfg["algo"] != "ppo")
         print(f"Modèle enregistré : {path}")
 
     if len(all_metrics) > 1:

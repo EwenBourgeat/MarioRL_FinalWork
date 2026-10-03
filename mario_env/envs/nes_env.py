@@ -95,6 +95,9 @@ class MarioNESEnv(gym.Env):
         self._clock = None
         self._steps = 0
         self._prev = None
+        # fonction appelée après chaque image NES (ex. pour afficher une
+        # partie image par image dans le menu MODELES)
+        self.frame_hook = None
 
         self.action_space = spaces.Discrete(len(self._buttons))
         self.observation_space = self._make_obs_space()
@@ -169,6 +172,8 @@ class MarioNESEnv(gym.Env):
             g.step(buttons)
             if human:
                 self.render()
+            if self.frame_hook is not None:
+                self.frame_hook()
             if g.dead or g.level_complete:
                 break
         died = g.dead
@@ -182,6 +187,8 @@ class MarioNESEnv(gym.Env):
                 g.step(0)
                 if human:
                     self.render()
+                if self.frame_hook is not None:
+                    self.frame_hook()
         self._steps += 1
         info = self._info()
         info["dead"] = died
