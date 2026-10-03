@@ -524,9 +524,11 @@ Mesures en plus : pièces par partie, part des parties passées par la salle
 bonus, power-ups, parties avec champignon / avec fleur (dans
 l'entraînement, le test glouton et la robustesse).
 
-**Variante avec fleur tôt** : `--level full_a` ajoute un bloc ? power-up en
-colonne 34 (entre les tuyaux 28 et 38, bien avant la salle bonus) : il donne
-la fleur si Mario est grand, un champignon sinon. `--reward route_a2` =
+**Variante avec fleur tôt** : `--level full_a` ajoute un « bloc de fleur »
+en colonne 34 (entre les tuyaux 28 et 38, bien avant la salle bonus) : il ne
+s'ouvre que pour Mario grand, qui y trouve la fleur ; il faut donc d'abord le
+champignon du bloc de la colonne 21 (sinon Mario prenait son champignon dans
+ce bloc et n'avait plus de fleur). `--reward route_a2` =
 `route_a` + champignon et fleur à +150 chacun et +25 pour frapper un bloc ?
 power-up.
 

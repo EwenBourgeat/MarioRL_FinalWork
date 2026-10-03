@@ -35,7 +35,7 @@ class GameConfig:
                  bonus_room=True, hidden_1up=True, start_status=0,
                  halfway=True, end_sequence=True, timer=True,
                  segment_order=None, timer_frames=C.GAME_TIMER_TICK,
-                 scroll_back=False, extra_blocks=()):
+                 scroll_back=False, extra_blocks=(), flower_blocks=()):
         self.lives = lives              # nombre de vies (3 comme l'original)
         self.blocks = blocks            # briques / blocs ? (v2 de l'article)
         self.enemies = enemies          # Goombas + Koopa (v3 de l'article)
@@ -57,6 +57,9 @@ class GameConfig:
         # blocs ajoutés au niveau original : ((colonne, rangée, tuile), ...)
         # ex. un bloc ? power-up tôt dans le niveau (niveau « full_a »)
         self.extra_blocks = tuple(extra_blocks)
+        # « blocs de fleur » ((colonne, rangée), ...) : ne s'ouvrent que pour
+        # Mario grand (fleur) ; Mario petit les cogne sans rien obtenir
+        self.flower_blocks = frozenset(tuple(b) for b in flower_blocks)
 
 
 class Game:
@@ -711,6 +714,9 @@ class Game:
             final = C.USED
             self.stats["qblocks_hit"] += 1
             self._block_coin(col, row)
+        elif (t == C.QBLOCK_POWERUP and p.small and self.area == "overworld"
+              and (col, row) in self.cfg.flower_blocks):
+            pass                        # bloc de fleur : rien pour Mario petit
         elif t in (C.QBLOCK_POWERUP, C.BRICK_POWERUP):
             final = C.USED
             self.stats["powerup_blocks"] += 1

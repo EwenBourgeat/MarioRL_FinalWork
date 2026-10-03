@@ -175,9 +175,12 @@ LEVEL_VERSIONS = {
     # jeu complet (power-ups, salle bonus, 1-UP caché)
     "full": dict(blocks=True, enemies=True, powerups=True, bonus_room=True,
                  hidden_1up=True),
-    # jeu complet + un bloc ? power-up en colonne 34 (entre les tuyaux 28 et
-    # 38) : une fleur tôt, bien avant le tuyau de la salle bonus (colonne 57)
+    # jeu complet + un « bloc de fleur » en colonne 34 (entre les tuyaux 28
+    # et 38), bien avant le tuyau de la salle bonus (colonne 57) : il ne
+    # s'ouvre que pour Mario grand, donc il faut d'abord le champignon du
+    # bloc de la colonne 21
     "full_a": dict(blocks=True, enemies=True, powerups=True,
                    bonus_room=True, hidden_1up=True,
-                   extra_blocks=((34, 9, C.QBLOCK_POWERUP),)),
+                   extra_blocks=((34, 9, C.QBLOCK_POWERUP),),
+                   flower_blocks=((34, 9),)),
 }
