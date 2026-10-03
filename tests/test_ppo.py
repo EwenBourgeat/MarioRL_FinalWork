@@ -181,13 +181,17 @@ def test_route_a_metrics_and_cli():
 def test_full_a_flower_block_and_route_a2_reward():
     from mario_env.envs.nes_env import MarioNESEnv
     import mario_env.constants as C
-    assert MarioNESEnv(level="full").game.grid[9, 34] == C.EMPTY
-    for status, kind, final in ((1, "flower", "fireball"),):
+    full = MarioNESEnv(level="full").game.grid
+    assert full[9, 34] == C.EMPTY and full[9, 43] == C.EMPTY
+    # bloc 34 : normal (champignon / fleur) ; bloc 43 : bloc de fleur
+    for col, status, kind, final in ((34, 0, "mushroom", "tall"),
+                                     (34, 1, "flower", "fireball"),
+                                     (43, 1, "flower", "fireball")):
         env = MarioNESEnv(level="full_a", obs_type="vector_plus",
                           actions="right_down", reward="route_a2")
-        env.reset(seed=0, options={"start_col": 33})
+        env.reset(seed=0, options={"start_col": col - 1})
         g = env.game
-        assert g.grid[9, 34] == C.QBLOCK_POWERUP     # le bloc ajouté
+        assert g.grid[9, col] == C.QBLOCK_POWERUP    # le bloc ajouté
         g.p.status = status
         hit = 0.0
         for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:
@@ -208,14 +212,14 @@ def test_flower_block_does_nothing_for_small_mario():
     import mario_env.constants as C
     env = MarioNESEnv(level="full_a", obs_type="vector_plus",
                       actions="right_down", reward="route_a2")
-    env.reset(seed=0, options={"start_col": 33})
+    env.reset(seed=0, options={"start_col": 42})
     g = env.game                                 # Mario petit
     total = 0.0
     for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:
         total += env.step(a)[1]
     assert g.stats["blocks_bumped"] >= 1         # il a bien cogné le bloc
     assert g.stats["powerup_blocks"] == 0 and total < 15   # pas de +25
-    assert g.grid[9, 34] == C.QBLOCK_POWERUP     # toujours disponible
+    assert g.grid[9, 43] == C.QBLOCK_POWERUP     # toujours disponible
     assert not [e for e in g.enemies if e.is_item]
 
 
@@ -233,3 +237,18 @@ def test_varied_start_only_in_training():
                      eval_steps=512)
     agent, history, tests, final, _ = train(cfg, log=None)
     assert tests and final["steps"] > 0        # tests depuis le vrai début
+
+
+def test_route_a2_guides_mario_towards_the_item():
+    from mario_env.envs.nes_env import MarioNESEnv
+    env = MarioNESEnv(level="full_a", obs_type="vector_plus",
+                      actions="right_down", reward="route_a2")
+    env.reset(seed=0, options={"start_col": 42})
+    g = env.game
+    g.p.status = 1
+    for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:   # fleur du bloc 43
+        obs, r, term, trunc, info = env.step(a)
+    assert info["item_dist"] is not None
+    d0 = info["item_dist"]
+    obs, r, term, trunc, info = env.step(0)      # on ne bouge pas
+    assert abs(info["item_dist"] - d0) < 0.5

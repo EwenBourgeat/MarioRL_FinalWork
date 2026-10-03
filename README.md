@@ -524,13 +524,17 @@ Mesures en plus : pièces par partie, part des parties passées par la salle
 bonus, power-ups, parties avec champignon / avec fleur (dans
 l'entraînement, le test glouton et la robustesse).
 
-**Variante avec fleur tôt** : `--level full_a` ajoute un « bloc de fleur »
-en colonne 34 (entre les tuyaux 28 et 38, bien avant la salle bonus) : il ne
-s'ouvre que pour Mario grand, qui y trouve la fleur ; il faut donc d'abord le
-champignon du bloc de la colonne 21 (sinon Mario prenait son champignon dans
-ce bloc et n'avait plus de fleur). `--reward route_a2` =
-`route_a` + champignon et fleur à +150 chacun et +25 pour frapper un bloc ?
-power-up.
+**Variante avec champignon et fleur tôt** : `--level full_a` ajoute, bien
+avant la salle bonus, un bloc ? power-up normal en colonne 34 (entre les
+tuyaux 28 et 38 : champignon pour Mario petit) et un « bloc de fleur » en
+colonne 43 (entre les tuyaux 38 et 46 : il ne s'ouvre que pour Mario grand).
+Le champignon du bloc 21 d'origine n'était presque jamais attrapé par l'IA
+(il roule jusqu'au tuyau 28 et revient : il faut l'attendre).
+`--reward route_a2` = `route_a` + champignon et fleur à +150 chacun, +25
+pour frapper un bloc ? power-up, et un guidage de +2 par case gagnée vers
+le champignon ou la fleur visible (−2 en s'en éloignant).
+`--start-col` / `--start-prob` : départ varié pendant l'entraînement (les
+tests partent toujours du début).
 
 ```bash
 python train.py --algo ppo --level full_a --obs vector_plus --actions right_down \
