@@ -120,9 +120,10 @@ def _route_a_env():
 def test_route_a_buttons_view_and_pipe_reward():
     env = _route_a_env()
     obs, _ = env.reset(seed=0, options={"start_col": 57})
-    assert env.action_space.n == 6 and obs.shape == (86,)
+    assert env.action_space.n == 6 and obs.shape == (87,)
     env.game.p.x = 918                  # centré sur le tuyau de la colonne 57
-    assert abs(env._obs()[-1]) < 0.1    # distance au tuyau ~ 0
+    o = env._obs()
+    assert abs(o[-2]) < 0.1 and o[-1] == 0   # entrée ~ 0, pas de sortie
     total = 0.0
     for a in [0, 5, 5, 5] + [0] * 20:   # bas : on entre dans le tuyau
         obs, r, term, trunc, info = env.step(a)
@@ -131,7 +132,7 @@ def test_route_a_buttons_view_and_pipe_reward():
     assert total > 190                  # +200 pour l'entrée
     coins = obs[66:81].reshape(5, 3)
     assert coins[:, 2].sum() == 5       # 5 pièces visibles dans la salle
-    assert obs[-1] > 1                  # la sortie est à droite
+    assert obs[-2] == 0 and obs[-1] > 1  # dans la salle : la sortie, à droite
     k = 0
     while info["area"] == "bonus" and k < 800:
         obs, r, term, trunc, info = env.step(2 if k % 10 < 7 else 1)
