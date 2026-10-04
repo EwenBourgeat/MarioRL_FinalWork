@@ -23,6 +23,12 @@ ACTION_SETS = {
     # right_only + bas (entrer dans le tuyau de la salle bonus)
     "right_down": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
                    ["right", "A", "B"], ["down"]],
+    # right_down + gauche et gauche+saut : reculer d'un pas pour sauter sur
+    # la fleur posée sur son bloc (elle ne bouge pas, contrairement au
+    # champignon)
+    "right_down_left": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
+                        ["right", "A", "B"], ["down"], ["left"],
+                        ["left", "A"]],
     "simple": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
                ["right", "A", "B"], ["A"], ["left"]],
     "complex": [["NOOP"], ["right"], ["right", "A"], ["right", "B"],
@@ -80,6 +86,8 @@ class RewardConfig:
                                      # la fleur visible (guidage)
     score_scale: float = 0.0         # multiplie la variation du score NES
     time_penalty: float = 0.0        # par seconde de chrono écoulée
+    stuck_steps: int = 0             # partie finie (comme une mort) après N
+                                     # pas sans rien de neuf (0 = jamais)
     clip: Optional[Tuple[float, float]] = None
 
     @classmethod
@@ -108,9 +116,13 @@ class RewardConfig:
             # + guidage : +2 par case gagnée vers le champignon ou la fleur
             # visible (-2 en s'en éloignant), sinon Mario fonce à droite et
             # le champignon du bloc 21 passe derrière lui
+            # + règle du blocage : 150 pas sans rien de neuf = partie perdue
+            # (-50).  Sans elle, Mario restait coincé contre un tuyau jusqu'à
+            # la limite de pas (rester bloqué ne coûtait presque rien) ; les
+            # parties gagnées ne font jamais de pause de plus de ~90 pas
             return cls(only_new_progress=True, coin=10.0, bonus_room=200.0,
                        powerup=150.0, powerup_block=25.0, time_penalty=-0.5,
-                       item_approach=2.0)
+                       item_approach=2.0, stuck_steps=150)
         if name == "score":
             return cls(progress_per_tile=0.0, stand_still=0.0, win=0.0,
                        death=0.0, brick=0.0, qblock=0.0, enemy=0.0,
@@ -186,11 +198,14 @@ LEVEL_VERSIONS = {
     # * colonne 34 (entre les tuyaux 28 et 38) : bloc ? power-up normal
     #   (champignon pour Mario petit) : celui du bloc 21 d'origine est très
     #   rarement attrapé par l'IA (le champignon passe derrière Mario) ;
-    # * colonne 43 (entre les tuyaux 38 et 46) : « bloc de fleur », qui ne
-    #   s'ouvre que pour Mario grand
+    # * colonne 36 (2 blocs après) : « bloc de fleur », qui ne s'ouvre que
+    #   pour Mario grand.  Mario y est déjà grand mais ne le frappe pas par
+    #   habitude (0 / 120 parties avec les anciens modèles) : il doit le
+    #   viser exprès.  En colonne 37, il le cognait en sautant sur le tuyau
+    #   38 (70 % des parties) ; en colonne 35, il n'était pas encore grand
     "full_a": dict(blocks=True, enemies=True, powerups=True,
                    bonus_room=True, hidden_1up=True,
                    extra_blocks=((34, 9, C.QBLOCK_POWERUP),
-                                 (43, 9, C.QBLOCK_POWERUP)),
-                   flower_blocks=((43, 9),)),
+                                 (36, 9, C.QBLOCK_POWERUP)),
+                   flower_blocks=((36, 9),)),
 }

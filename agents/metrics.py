@@ -68,6 +68,8 @@ def article_metrics(history, last=LAST, window=WINDOW):
         **({"mushroom_rate": float((tail["mushrooms"] > 0).mean()),
             "flower_rate": float((tail["flowers"] > 0).mean())}
            if "mushrooms" in history else {}),
+        **({"stuck_rate": float(tail["stuck"].mean())}
+           if "stuck" in history else {}),
     }
 
 
@@ -103,6 +105,8 @@ def format_metrics(m, level, greedy=None, algo=None):
             f"  Parties avec champignon     : {m['mushroom_rate']:.1%}",
             f"  Parties avec fleur          : {m['flower_rate']:.1%}",
         ]
+    if m.get("stuck_rate") and level.startswith("full"):
+        lines.append(f"  Parties bloquées (150 pas)  : {m['stuck_rate']:.1%}")
     lines += [
         "Autres repères :",
         f"  Première victoire       : épisode {_ep(m['first_win'])}",
@@ -122,7 +126,9 @@ def format_metrics(m, level, greedy=None, algo=None):
         ]
     if greedy is not None:
         verdict = ("VICTOIRE" if greedy["win"] else
-                   "mort" if greedy["dead"] else "temps écoulé")
+                   "mort" if greedy["dead"] else
+                   "bloqué (150 pas sans rien de neuf)" if greedy.get("stuck")
+                   else "temps écoulé")
         line = (f"Test glouton (ε = 0)    : {verdict} en {greedy['steps']} "
                 f"pas, retour {greedy['return']:.1f}, colonne "
                 f"{greedy['max_col']}")

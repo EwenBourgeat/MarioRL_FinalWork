@@ -50,7 +50,7 @@ HISTORY_FIELDS = ("return", "win", "dead", "timeout", "steps", "max_col",
                   "epsilon", "bricks", "qblocks", "enemies", "jumps",
                   "n_states")
 # en plus sur le vrai jeu NES (PPO) : pièces, salle bonus, power-ups
-NES_FIELDS = ("coins", "bonus", "powerups", "mushrooms", "flowers")
+NES_FIELDS = ("coins", "bonus", "powerups", "mushrooms", "flowers", "stuck")
 
 
 @dataclass
@@ -91,6 +91,7 @@ class TrainConfig:
     # à la colonne start_col (les tests partent toujours du vrai début)
     start_col: int = 0
     start_prob: float = 0.0
+    start_big: bool = False             # Mario déjà grand à ce départ
     steps: int = 0                 # PPO : nombre total de pas
     n_envs: int = 2                # PPO : parties jouées en parallèle
     eval_steps: int = 100_000      # PPO : test glouton tous les N pas
@@ -212,7 +213,9 @@ def _summary(info, total, max_col, truncated):
             "coins": st.get("coins", 0), "bonus": st.get("bonus_room", 0),
             "powerups": st.get("powerups", 0),
             "mushrooms": st.get("mushrooms", 0),
-            "flowers": st.get("flowers", 0)}
+            "flowers": st.get("flowers", 0),
+            # règle du blocage (route_a2) : rien de neuf pendant 150 pas
+            "stuck": int(info.get("stuck", False))}
 
 
 def greedy_test(env, agent, seed=0):

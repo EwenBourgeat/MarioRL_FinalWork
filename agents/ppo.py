@@ -89,18 +89,19 @@ def make_nes_env(level="v3", obs="vector", actions="right_only",
 
 class VariedStart(gym.Wrapper):
     """Départ varié (curriculum) : avec la probabilité ``prob``, la partie
-    commence à la colonne ``col`` au lieu du début du niveau.  Sert à faire
-    rencontrer souvent un endroit rare (ex. le bloc du champignon)."""
+    commence à la colonne ``col`` au lieu du début du niveau (avec ``big``,
+    Mario y est déjà grand).  Sert à faire rencontrer souvent un endroit
+    rare (ex. le bloc de fleur)."""
 
-    def __init__(self, env, col, prob, seed=0):
+    def __init__(self, env, col, prob, seed=0, big=False):
         super().__init__(env)
-        self.col, self.prob = col, prob
+        self.col, self.prob, self.big = col, prob, big
         self.rng = random.Random(seed)
 
     def reset(self, **kwargs):
         if self.rng.random() < self.prob:
             options = dict(kwargs.pop("options", None) or {},
-                           start_col=self.col)
+                           start_col=self.col, start_big=self.big)
             return self.env.reset(options=options, **kwargs)
         return self.env.reset(**kwargs)
 
@@ -218,7 +219,7 @@ def train_ppo(cfg, log=print):
         env = make_env(cfg)
         if cfg.start_col and cfg.start_prob > 0:
             env = VariedStart(env, cfg.start_col, cfg.start_prob,
-                              cfg.seed * 100 + i)
+                              cfg.seed * 100 + i, big=cfg.start_big)
         return EpisodeRecorder(env, episodes)
 
     venv = DummyVecEnv([lambda i=i: factory(i) for i in range(cfg.n_envs)])

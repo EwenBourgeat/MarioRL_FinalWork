@@ -526,21 +526,44 @@ l'entraînement, le test glouton et la robustesse).
 
 **Variante avec champignon et fleur tôt** : `--level full_a` ajoute, bien
 avant la salle bonus, un bloc ? power-up normal en colonne 34 (entre les
-tuyaux 28 et 38 : champignon pour Mario petit) et un « bloc de fleur » en
-colonne 43 (entre les tuyaux 38 et 46 : il ne s'ouvre que pour Mario grand).
+tuyaux 28 et 38 : champignon pour Mario petit) et, 2 blocs après, un « bloc
+de fleur » en colonne 36 (il ne s'ouvre que pour Mario grand).  Mario ne le
+cogne pas par habitude en courant vers le tuyau 38 (0 partie sur 120 avec
+les modèles entraînés sans lui) : il doit le viser exprès.
 Le champignon du bloc 21 d'origine n'était presque jamais attrapé par l'IA
 (il roule jusqu'au tuyau 28 et revient : il faut l'attendre).
-`--reward route_a2` = `route_a` + champignon et fleur à +150 chacun, +25
-pour frapper un bloc ? power-up, et un guidage de +2 par case gagnée vers
-le champignon ou la fleur visible (−2 en s'en éloignant).
-`--start-col` / `--start-prob` : départ varié pendant l'entraînement (les
-tests partent toujours du début).
+
+* `--actions right_down_left` : `right_down` + **gauche** et gauche+saut.
+  La fleur ne bouge pas et reste posée sur son bloc : pour la prendre, il
+  faut cogner le bloc puis reculer d'un pas et sauter dessus. Sans la
+  gauche, Mario ne l'a jamais apprise (au hasard : fleur prise après 0,6 %
+  des coups de tête dans le bloc, contre 5,2 % avec la gauche) ;
+* `--reward route_a2` = `route_a` + champignon et fleur à +150 chacun, +25
+  pour frapper un bloc ? power-up, un guidage de +2 par case gagnée vers le
+  champignon ou la fleur visible (−2 en s'en éloignant), et la **règle du
+  blocage** : 150 pas sans rien de neuf (ni case plus à droite, ni pièce,
+  objet, bloc, ennemi) = partie perdue (−50, comme une mort). Sans elle,
+  Mario restait coincé contre le tuyau 46 jusqu'à la limite de pas ; les
+  parties gagnées ne font jamais de pause de plus de ~90 pas.
+* `--start-col` / `--start-prob` (+ `--start-big`) : départ varié pendant
+  l'entraînement (les tests partent toujours du début). Inutile ici : à
+  l'essai, il a fait baisser le champignon et les victoires.
 
 ```bash
-python train.py --algo ppo --level full_a --obs vector_plus --actions right_down \
-    --reward route_a2 --ent-coef 0.01 --steps 5000000 --seeds 42 43 44 45 46 \
-    --carbon --variant B --log-steps 250000
+python train.py --algo ppo --level full_a --obs vector_plus \
+    --actions right_down_left --reward route_a2 --ent-coef 0.01 \
+    --steps 3000000 --seeds 42 43 44 45 46 --carbon --variant B \
+    --log-steps 250000
 ```
+
+Essai dans le cloud (2 millions de pas, graines 42 et 43) : 94 et 79 % de
+victoires sur les 100 dernières parties, salle bonus 95 et 78 %, champignon
+98 et 95 %, **fleur 98 et 95 %**, 18,7 et 14,3 pièces ; robustesse 88 et
+82 % de victoires (fleur 94 et 98 %). Test glouton : graine 42 gagné par la
+salle bonus (307 pas, 20 pièces, champignon et fleur) ; graine 43 bloquée
+au dernier escalier (colonne 187) après la salle bonus. 90 à 98 % des
+appuis sur « gauche » ont lieu entre les colonnes 33 et 37, juste au bloc
+de fleur : Mario recule exprès pour la prendre.
 
 Le modèle (`models/ppo_nes_v3_s42_3m/ppo.zip`) se regarde dans le menu
 **MODELES → PPO**, avec les graphismes du jeu (x1 = 60 images/s). Les

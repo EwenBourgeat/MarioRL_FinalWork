@@ -159,8 +159,11 @@ class MarioNESEnv(gym.Env):
             if x is None:
                 x = int(options["start_col"]) * C.TILE
             self._teleport(int(x))
+        if options.get("start_big"):            # curriculum : Mario déjà grand
+            self.game.p.status = max(self.game.p.status, 1)
         self._steps = 0
         self._held = 0
+        self._idle = 0
         if self.noop_max:
             for _ in range(int(self.np_random.integers(0, self.noop_max + 1))):
                 self.game.step(0)
@@ -215,10 +218,16 @@ class MarioNESEnv(gym.Env):
         info = self._info()
         info["dead"] = died
         info["death_cause"] = cause if died else None
+        self._idle = 0 if self._something_new(self._prev, info) else self._idle + 1
+        info["idle_steps"] = self._idle
+        stuck = bool(isinstance(self.reward_cfg, RewardConfig)
+                     and self.reward_cfg.stuck_steps
+                     and self._idle >= self.reward_cfg.stuck_steps)
+        info["stuck"] = stuck
         reward = self._reward(self._prev, info, int(action))
         self._prev = info
         terminated = bool(
-            (died and g.lives <= 0) or g.game_over
+            (died and g.lives <= 0) or g.game_over or stuck
             or (g.level_complete and (self.terminate_on_flag or g.finished)))
         truncated = bool(self.max_episode_steps is not None
                          and self._steps >= self.max_episode_steps
@@ -236,6 +245,22 @@ class MarioNESEnv(gym.Env):
             "item_dist": self._item_dist(),
         })
         return info
+
+    # événements qui comptent comme « du neuf » (règle du blocage)
+    NEW_STATS = ("coins", "powerups", "powerup_blocks", "bonus_room",
+                 "enemies_killed", "qblocks_hit", "bricks_broken")
+
+    def _something_new(self, prev, info):
+        """Mario a-t-il fait quelque chose de neuf pendant ce pas (nouvelle
+        case la plus à droite, changement de zone, pièce, objet, bloc,
+        ennemi, objet qui sort / qui se rapproche) ?"""
+        if info["max_x"] > prev["max_x"] or info["area"] != prev["area"]:
+            return True
+        if (info["item_dist"] is not None and prev["item_dist"] is not None
+                and info["item_dist"] < prev["item_dist"]):   # vers l'objet
+            return True
+        s0, s1 = prev["stats"], info["stats"]
+        return any(s1.get(k, 0) > s0.get(k, 0) for k in self.NEW_STATS)
 
     def _item_dist(self):
         """Distance (en cases) au champignon / à la fleur le plus proche."""
@@ -272,7 +297,7 @@ class MarioNESEnv(gym.Env):
             r += rc.item_approach * (prev["item_dist"] - info["item_dist"])
         r += rc.score_scale * (info["score"] - prev["score"])
         r += rc.time_penalty * max(0, prev["time"] - info["time"])
-        if info["dead"]:
+        if info["dead"] or info.get("stuck"):
             r += rc.death
         if info["flag_get"] and not prev["flag_get"]:
             r += rc.win

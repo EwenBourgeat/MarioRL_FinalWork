@@ -182,11 +182,11 @@ def test_full_a_flower_block_and_route_a2_reward():
     from mario_env.envs.nes_env import MarioNESEnv
     import mario_env.constants as C
     full = MarioNESEnv(level="full").game.grid
-    assert full[9, 34] == C.EMPTY and full[9, 43] == C.EMPTY
-    # bloc 34 : normal (champignon / fleur) ; bloc 43 : bloc de fleur
+    assert full[9, 34] == C.EMPTY and full[9, 36] == C.EMPTY
+    # bloc 34 : normal (champignon / fleur) ; bloc 36 : bloc de fleur
     for col, status, kind, final in ((34, 0, "mushroom", "tall"),
                                      (34, 1, "flower", "fireball"),
-                                     (43, 1, "flower", "fireball")):
+                                     (36, 1, "flower", "fireball")):
         env = MarioNESEnv(level="full_a", obs_type="vector_plus",
                           actions="right_down", reward="route_a2")
         env.reset(seed=0, options={"start_col": col - 1})
@@ -212,14 +212,14 @@ def test_flower_block_does_nothing_for_small_mario():
     import mario_env.constants as C
     env = MarioNESEnv(level="full_a", obs_type="vector_plus",
                       actions="right_down", reward="route_a2")
-    env.reset(seed=0, options={"start_col": 42})
+    env.reset(seed=0, options={"start_col": 35})
     g = env.game                                 # Mario petit
     total = 0.0
     for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:
         total += env.step(a)[1]
     assert g.stats["blocks_bumped"] >= 1         # il a bien cogné le bloc
     assert g.stats["powerup_blocks"] == 0 and total < 15   # pas de +25
-    assert g.grid[9, 43] == C.QBLOCK_POWERUP     # toujours disponible
+    assert g.grid[9, 36] == C.QBLOCK_POWERUP     # toujours disponible
     assert not [e for e in g.enemies if e.is_item]
 
 
@@ -231,6 +231,11 @@ def test_varied_start_only_in_training():
     cols = [env.reset(seed=i)[1]["col"] for i in range(40)]
     assert set(cols) == {cols[0], 18} or set(cols) >= {18}
     assert 8 <= cols.count(18) <= 32           # environ la moitié
+    big = VariedStart(make_nes_env(level="full_a", obs="vector_plus",
+                                   actions="right_down", reward="route_a2"),
+                      35, 1.0, seed=0, big=True)
+    _, info = big.reset(seed=0)
+    assert info["col"] == 35 and info["status"] == "tall"
     pytest.importorskip("stable_baselines3")
     cfg = ppo_config(level="full_a", obs="vector_plus", actions="right_down",
                      reward="route_a2", start_col=18, start_prob=0.5,
@@ -243,12 +248,46 @@ def test_route_a2_guides_mario_towards_the_item():
     from mario_env.envs.nes_env import MarioNESEnv
     env = MarioNESEnv(level="full_a", obs_type="vector_plus",
                       actions="right_down", reward="route_a2")
-    env.reset(seed=0, options={"start_col": 42})
+    env.reset(seed=0, options={"start_col": 35})
     g = env.game
     g.p.status = 1
-    for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:   # fleur du bloc 43
+    for a in [2] * 3 + [0] * 17 + [2] * 4 + [0] * 6:   # fleur du bloc 36
         obs, r, term, trunc, info = env.step(a)
     assert info["item_dist"] is not None
     d0 = info["item_dist"]
     obs, r, term, trunc, info = env.step(0)      # on ne bouge pas
     assert abs(info["item_dist"] - d0) < 0.5
+
+
+def test_flower_of_block_36_can_be_taken_without_going_left():
+    # pas de bouton « gauche » : la fleur (immobile, posée sur le bloc) doit
+    # pouvoir être prise en cognant le bloc puis en sautant vers la droite
+    from mario_env.envs.nes_env import MarioNESEnv
+    env = MarioNESEnv(level="full_a", obs_type="vector_plus",
+                      actions="right_down", reward="route_a2")
+    env.reset(seed=0, options={"start_col": 35})
+    env.game.p.status = 1                        # Mario grand
+    for a in [1, 0, 4, 2, 2, 3, 3, 4, 0, 0, 0, 0, 2, 4, 0]:
+        env.step(a)
+    assert env.game.stats["flowers"] == 1
+    assert env.game.info()["status"] == "fireball"
+
+
+def test_stuck_rule_ends_the_game_like_a_death():
+    from mario_env.envs.common import RewardConfig
+    from mario_env.envs.nes_env import MarioNESEnv
+    assert RewardConfig.preset("route_a2").stuck_steps == 150
+    env = MarioNESEnv(level="full_a", obs_type="vector_plus",
+                      actions="right_down_left",
+                      reward=RewardConfig(stuck_steps=20))
+    assert env.action_space.n == 8
+    env.reset(seed=0)
+    for k in range(5):                           # il avance : rien à signaler
+        _, _, term, _, info = env.step(1)
+    assert info["idle_steps"] == 0 and not term
+    for k in range(25):                          # il ne fait plus rien
+        _, r, term, trunc, info = env.step(0)
+        if term:
+            break
+    assert term and info["stuck"] and info["idle_steps"] == 20
+    assert r < -40                               # pénalité de mort (-50)

@@ -38,15 +38,18 @@ def build_parser():
     p.add_argument("--level", choices=["v1", "v2", "v3", "full", "full_a"],
                    default=d.level,
                    help="full = jeu complet, full_a = jeu complet + un bloc "
-                        "de fleur en colonne 34 (vrai jeu NES seulement)")
+                        "champignon en colonne 34 et un bloc de fleur en "
+                        "colonne 36 (vrai jeu NES seulement)")
     p.add_argument("--env", choices=["grid", "nes"], default=None,
                    help="grid = environnement de l'article, nes = vrai jeu "
                         "(défaut : nes pour PPO, grid sinon)")
     p.add_argument("--actions", default=None,
-                   choices=["paper", "right_only", "right_down", "simple",
+                   choices=["paper", "right_only", "right_down",
+                            "right_down_left", "simple",
                             "complex"],
                    help="vrai jeu : boutons (défaut right_only ; right_down "
-                        "= right_only + bas, pour le tuyau)")
+                        "= right_only + bas, pour le tuyau ; "
+                        "right_down_left = right_down + gauche, gauche+saut)")
     p.add_argument("--reward", choices=["paper", "route_a", "route_a2"],
                    default="paper",
                    help="vrai jeu : récompense (paper = article ; route_a = "
@@ -64,6 +67,9 @@ def build_parser():
                    help="PPO : part des parties d'entraînement qui partent "
                         "de --start-col (ex. 0.5) ; les tests partent "
                         "toujours du début")
+    p.add_argument("--start-big", action="store_true",
+                   help="PPO : Mario est déjà grand aux départs de "
+                        "--start-col (ex. pour s'entraîner sur la fleur)")
     p.add_argument("--eval-steps", type=int, default=d.eval_steps,
                    help="PPO : test glouton tous les N pas")
     p.add_argument("--log-steps", type=int, default=d.log_steps,
@@ -191,6 +197,7 @@ def main(argv=None):
                            ent_coef=args.ent_coef,
                            start_col=args.start_col,
                            start_prob=args.start_prob,
+                           start_big=args.start_big,
                            log_steps=args.log_steps).as_dict()
                for s in args.seeds]
     if args.algo == "montecarlo":
