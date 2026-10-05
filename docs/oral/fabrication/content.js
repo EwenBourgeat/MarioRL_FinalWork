@@ -13,9 +13,11 @@ Monde 1-4 : le recul, avec l'énergie consommée, notre auto-critique et la conc
 
   d1: `[0:05] Commençons par la veille : l'article.`,
 
-  article: `[1:15] L'article part d'une idée connue des game designers : le niveau 1-1 serait une leçon cachée. Il commence par un sol plat et un seul ennemi, introduit ensuite les tuyaux et les trous, et garde les groupes d'ennemis pour la fin.
+  article: `[0:50] L'article part d'une idée connue des game designers : le niveau 1-1 serait une leçon cachée. Il commence par un sol plat et un seul ennemi, introduit ensuite les tuyaux et les trous, et garde les groupes d'ennemis pour la fin.
 Les auteurs, de Johns Hopkins, se demandent si on peut le mesurer avec des IA. Deux questions : quel algorithme apprend le mieux ce niveau, et est-ce que ça dépend de sa difficulté ? Et est-ce que l'ordre d'origine des morceaux du niveau accélère l'apprentissage ? En tout, 120 entraînements.
-Pour situer l'article (frise en bas) : il s'appuie sur des méthodes classiques, Q-Learning, SARSA, DQN, et sur le curriculum learning de Bengio en 2009, l'idée qu'on apprend mieux du plus simple au plus difficile. Attention : c'est une prépublication arXiv, pas encore relue par des pairs.`,
+Attention : c'est une prépublication arXiv, pas encore relue par des pairs.`,
+
+  veille: `[0:30] Pour situer l'article : il s'appuie sur des méthodes classiques (Q-Learning en 1992, DQN en 2015, PPO en 2017) et sur le curriculum learning de Bengio en 2009, l'idée qu'on apprend mieux du plus simple au plus difficile. Sa nouveauté : utiliser ces IA pour mesurer si un niveau de jeu est pédagogique.`,
 
   terrain: `[1:15] Le terrain : le niveau est une grille de 212 colonnes sur 14 lignes, en trois versions : v1 avec le terrain seul, v2 avec les blocs, v3 avec 17 ennemis. C'est la v3 qui nous intéresse.
 Mario n'a que trois boutons : rien, avancer, sauter. Les récompenses : +100 au drapeau, -50 à la mort, +0,5 par pas vers la droite, plus des bonus pour les blocs et les Goombas.

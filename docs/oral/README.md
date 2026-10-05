@@ -2,8 +2,8 @@
 
 | Fichier | Contenu |
 |---|---|
-| `Oral_RL_Mario.pptx` | Le diaporama : 22 diapos pour environ 20 minutes, puis 7 diapos d'annexe pour les questions du jury. Notes de l'orateur et vidéos incluses |
-| `Notes_oral.md` | Le texte à dire, diapo par diapo, avec la durée de chacune (18 min 50 s au total) |
+| `Oral_RL_Mario.pptx` | Le diaporama : 23 diapos pour environ 20 minutes, puis 7 diapos d'annexe pour les questions du jury. Notes de l'orateur et vidéos incluses |
+| `Notes_oral.md` | Le texte à dire, diapo par diapo, avec la durée de chacune (environ 19 minutes au total) |
 | `videos/` | Les 4 vidéos, en MP4 |
 | `fabrication/` | Les scripts qui fabriquent les vidéos, les images et le diaporama |
 

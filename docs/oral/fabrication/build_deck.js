@@ -83,58 +83,57 @@ function bricks(s) {               // sol en briques du modèle (diapos « Mario
   sprite(s, 'ground', { x: 0, y: 6.537, scale: 1 });
 }
 
-function greenGround(s) {          // diapos de contenu : simple sol vert
-  s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 7.2, w: W, h: 0.07, fill: { color: G_LIGHT }, line: NOLINE, objectName: 'sol_haut' });
-  s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 7.27, w: W, h: 0.23, fill: { color: G_DARK }, line: NOLINE, objectName: 'sol' });
+// --- version épurée : cartes blanches sans contour, ombre douce, titres en
+// Montserrat ; la police pixel ne sert plus qu'aux petits repères « WORLD »
+const soft = () => ({ type: 'outer', blur: 8, offset: 2, angle: 90, color: '0B1F44', opacity: 0.22 });
+
+function greenGround(s) {          // diapos de contenu : fine bande de sol vert
+  s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 7.34, w: W, h: 0.16, fill: { color: G_DARK }, line: NOLINE, objectName: 'sol' });
 }
 
 function pageNo(s) {
-  s.addText(String(slideNo), { x: W - 1.0, y: 7.27, w: 0.62, h: 0.23, fontFace: FB, fontSize: 10, bold: true,
+  s.addText(String(slideNo), { x: W - 1.0, y: 6.95, w: 0.62, h: 0.3, fontFace: FB, fontSize: 11, bold: true,
                                color: WHITE, align: 'right', valign: 'middle', margin: 0, isTextBox: true });
 }
 
-function header(s, world, title, msg) {
-  s.addText(world, { x: 0.6, y: 0.3, w: 9, h: 0.3, fontFace: FT, fontSize: 12, color: YEL, margin: 0,
-                     valign: 'middle', isTextBox: true, shadow: sh(1.5), objectName: 'monde' });
-  s.addText(fr(title), { x: 0.6, y: 0.62, w: 12.13, h: 0.6, fontFace: FT, fontSize: 28, color: WHITE, margin: 0,
-                     valign: 'middle', isTextBox: true, shadow: sh(2.5), objectName: 'titre' });
-  if (msg) {
-    s.addText(fr(msg), { x: 0.6, y: 1.27, w: 12.13, h: 0.42, fontFace: FB, fontSize: 16, bold: true, color: NAVY,
-                     margin: 0, valign: 'middle', isTextBox: true, objectName: 'message' });
-  }
+function header(s, world, title) {
+  s.addText(world, { x: 0.6, y: 0.38, w: 9, h: 0.3, fontFace: FT, fontSize: 11, color: YEL, margin: 0,
+                     valign: 'middle', isTextBox: true, objectName: 'monde' });
+  s.addText(fr(title), { x: 0.6, y: 0.72, w: 12.13, h: 0.7, fontFace: FB, fontSize: 30, bold: true, color: WHITE,
+                         margin: 0, valign: 'middle', isTextBox: true, objectName: 'titre' });
 }
 
-function content(section, world, title, msg) {
+function content(section, world, title) {
   const s = newSlide(section);
   greenGround(s);
-  header(s, world, title, msg);
+  header(s, world, title);
   pageNo(s);
   return s;
 }
 
 function card(s, x, y, w, h, fill = WHITE, name = 'carte') {
-  s.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: fill }, line: { color: BLACK, width: 1.5 },
-                                      shadow: sh(3.5), objectName: name });
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.08, fill: { color: fill }, line: NOLINE,
+                                              shadow: soft(), objectName: name });
 }
 
-function tag(s, text, x, y, w, fill = NAVY, color = WHITE, size = 12) {
-  w = Math.max(w, text.length * size * 0.0088 + 0.32);      // assez large pour tenir sur une ligne
-  s.addText(fr(text), { x, y, w, h: 0.36, fontFace: FB, fontSize: size, bold: true, color, fill: { color: fill },
-                    margin: mg(0, 8, 0, 8), valign: 'middle', isTextBox: true, charSpacing: 0.5, objectName: 'etiquette' });
+// petit titre en capitales en haut d'une carte
+function tag(s, text, x, y, w, color = GREY, _c, size = 11.5) {
+  s.addText(fr(text), { x: x + 0.3, y: y + 0.22, w: Math.max(w, 3) , h: 0.3, fontFace: FB, fontSize: size, bold: true,
+                        color, margin: 0, valign: 'middle', isTextBox: true, charSpacing: 1, objectName: 'etiquette' });
 }
 
 function txt(s, text, x, y, w, h, o = {}) {
-  s.addText(fr(text), Object.assign({ x, y, w, h, fontFace: FB, fontSize: 14, color: NAVY, margin: 0,
-                                  valign: 'top', isTextBox: true }, o));
+  s.addText(fr(text), Object.assign({ x, y, w, h, fontFace: FB, fontSize: 16, color: NAVY, margin: 0,
+                                      valign: 'top', isTextBox: true }, o));
 }
 
 // liste à puces : items = chaînes ou [gras, suite]
 function bullets(s, items, x, y, w, h, o = {}) {
-  const size = o.fontSize || 14;
+  const size = o.fontSize || 16;
   const runs = [];
   items.forEach((it, i) => {
     const last = i === items.length - 1;
-    const base = { bullet: { indent: 14 }, paraSpaceAfter: o.space || 7, breakLine: false };
+    const base = { bullet: { indent: 16 }, paraSpaceAfter: o.space || 12, breakLine: false };
     if (Array.isArray(it)) {
       runs.push({ text: fr(it[0]), options: Object.assign({}, base, { bold: true }) });
       runs.push({ text: fr(it[1]), options: { breakLine: !last } });   // même paragraphe (voir fix_pptx.py)
@@ -146,23 +145,18 @@ function bullets(s, items, x, y, w, h, o = {}) {
                                   isTextBox: true, lineSpacingMultiple: 1.05 }, o.box || {}));
 }
 
-// petit carré de couleur (algorithme)
-function chip(s, x, y, key, size = 0.2) {
-  s.addShape(pres.shapes.RECTANGLE, { x, y, w: size, h: size, fill: { color: ALGO[key] }, line: { color: BLACK, width: 0.75 } });
-}
-
 // tableau en formes (Canva n'importe pas les tableaux PowerPoint)
-function table(s, { x, y, colW, headH, rowH, head, rows, keys, best = [], size = 13, headSize = 11.5, firstBold = true, leftCols = [] }) {
+function table(s, { x, y, colW, headH, rowH, head, rows, best = [], size = 14, headSize = 12, firstBold = true, leftCols = [] }) {
   const totW = colW.reduce((a, b) => a + b, 0);
   const totH = headH + rowH * rows.length;
-  s.addShape(pres.shapes.RECTANGLE, { x: x - 0.02, y: y - 0.02, w: totW + 0.04, h: totH + 0.04, fill: { color: NAVY },
-                                      line: { color: BLACK, width: 1.5 }, shadow: sh(3.5), objectName: 'tableau_fond' });
+  s.addShape(pres.shapes.RECTANGLE, { x, y, w: totW, h: totH, fill: { color: WHITE }, line: NOLINE, shadow: soft(),
+                                      objectName: 'tableau_fond' });
   let cx = x;
   head.forEach((hd, j) => {
     const left = j === 0 || leftCols.includes(j);
     s.addText(fr(hd), { x: cx, y, w: colW[j], h: headH, fontFace: FB, fontSize: headSize, bold: true, color: WHITE,
-                    fill: { color: NAVY }, align: left ? 'left' : 'center', valign: 'middle',
-                    margin: mg(2, 6, 2, left ? 10 : 6), isTextBox: true, objectName: 'entete' });
+                        fill: { color: NAVY }, align: left ? 'left' : 'center', valign: 'middle',
+                        margin: mg(2, 6, 2, left ? 14 : 6), isTextBox: true, objectName: 'entete' });
     cx += colW[j];
   });
   rows.forEach((row, i) => {
@@ -170,39 +164,28 @@ function table(s, { x, y, colW, headH, rowH, head, rows, keys, best = [], size =
     const ry = y + headH + i * rowH;
     row.forEach((cell, j) => {
       const isBest = best.some(([bi, bj]) => bi === i && bj === j - 1);
-      const fill = isBest ? 'FFE27A' : (i % 2 ? ZEBRA : WHITE);
-      if (j === 0) {
-        s.addText(fr(cell), { x: cxx, y: ry, w: colW[j], h: rowH, fontFace: FB, fontSize: size, bold: firstBold,
-                          color: NAVY, fill: { color: fill }, valign: 'middle', margin: mg(0, 4, 0, keys ? 30 : 10),
-                          isTextBox: true, objectName: 'cellule' });
-        if (keys) chip(s, cxx + 0.12, ry + rowH / 2 - 0.1, keys[i]);
-      } else {
-        const left = leftCols.includes(j);
-        s.addText(fr(cell), { x: cxx, y: ry, w: colW[j], h: rowH, fontFace: FB, fontSize: size, bold: isBest,
-                          color: NAVY, fill: { color: fill }, align: left ? 'left' : 'center', valign: 'middle',
-                          margin: left ? mg(2, 6, 2, 10) : 2, isTextBox: true, objectName: 'cellule' });
-      }
+      const fill = isBest ? 'FFF0B3' : (i % 2 ? 'F2F5FA' : WHITE);
+      const left = j === 0 || leftCols.includes(j);
+      s.addText(fr(cell), { x: cxx, y: ry, w: colW[j], h: rowH, fontFace: FB, fontSize: size,
+                            bold: j === 0 ? firstBold : isBest, color: NAVY, fill: { color: fill },
+                            align: left ? 'left' : 'center', valign: 'middle',
+                            margin: left ? mg(2, 6, 2, 14) : 2, isTextBox: true, objectName: 'cellule' });
       cxx += colW[j];
     });
   });
   return y + totH;
 }
 
-// barres horizontales : items = {label, value (0-100), text, color, bold}
-function hbars(s, { x, y, labelW, barW, rowH, items, size = 13, max = 100 }) {
+// barres horizontales : items = {label, value (0-100), text, color}
+function hbars(s, { x, y, labelW, barW, rowH, items, size = 15, max = 100 }) {
   items.forEach((it, i) => {
     const ry = y + i * rowH;
-    const bh = rowH * 0.56;
-    txt(s, it.label, x, ry, labelW - 0.12, rowH, { fontSize: size, bold: true, valign: 'middle' });
-    s.addShape(pres.shapes.RECTANGLE, { x: x + labelW, y: ry + (rowH - bh) / 2, w: barW, h: bh,
-                                        fill: { color: 'D9E3F5' }, line: NOLINE });
+    const bh = rowH * 0.5;
+    txt(s, it.label, x, ry, labelW - 0.15, rowH, { fontSize: size, bold: true, valign: 'middle' });
     const bw = Math.max(0.05, barW * it.value / max);
     s.addShape(pres.shapes.RECTANGLE, { x: x + labelW, y: ry + (rowH - bh) / 2, w: bw, h: bh,
-                                        fill: { color: it.color }, line: { color: BLACK, width: 1 } });
-    const inside = it.value / max > 0.78;
-    txt(s, it.text, inside ? x + labelW + bw - 1.25 : x + labelW + bw + 0.08, ry, 1.17, rowH,
-        { fontSize: size, bold: true, valign: 'middle', align: inside ? 'right' : 'left',
-          color: inside ? WHITE : NAVY });
+                                        fill: { color: it.color }, line: NOLINE });
+    txt(s, it.text, x + labelW + bw + 0.12, ry, 1.3, rowH, { fontSize: size, bold: true, valign: 'middle' });
   });
 }
 
@@ -214,15 +197,18 @@ function video(s, name, x, y, w, h) {
     s.addMedia({ type: 'video', path: path.join(VIDEOS, name), x, y, w, h, cover: b64(asset('poster_' + base + '.png')),
                  objectName: 'video_' + base });
   }
-  s.addShape(pres.shapes.RECTANGLE, { x: x - 0.03, y: y - 0.03, w: w + 0.06, h: h + 0.06, fill: { type: 'none' },
-                                      line: { color: BLACK, width: 2 }, objectName: 'cadre_video' });
 }
 
+// grand chiffre + légende, sur une carte blanche
 function kpi(s, x, y, w, h, value, label, o = {}) {
-  card(s, x, y, w, h, o.fill || WHITE, 'kpi');
-  txt(s, value, x + 0.15, y + 0.08, w - 0.3, h * 0.55, { fontSize: o.size || 26, bold: true, color: o.color || NAVY,
-                                                        valign: 'middle', fontFace: FB });
-  txt(s, label, x + 0.15, y + h * 0.58, w - 0.3, h * 0.38, { fontSize: o.labelSize || 11.5, color: GREY, valign: 'top' });
+  card(s, x, y, w, h, WHITE, 'kpi');
+  txt(s, value, x + 0.25, y + 0.12, w - 0.4, h * 0.52, { fontSize: o.size || 30, bold: true, color: o.color || NAVY, valign: 'middle' });
+  txt(s, label, x + 0.25, y + h * 0.6, w - 0.4, h * 0.34, { fontSize: o.labelSize || 13, color: GREY, valign: 'top' });
+}
+
+// phrase-clé en bas de diapo (blanc, sur le fond bleu)
+function punch(s, text, y = 6.45) {
+  txt(s, text, 0.6, y, 12.13, 0.5, { fontSize: 18, bold: true, color: WHITE, valign: 'middle' });
 }
 
 // grand titre des diapos « Mario » (blanc, ombre violette)
@@ -297,156 +283,100 @@ function divider(section, world, label, sub, decorate, note) {
 divider('1-1 La veille', '1-1', 'LA VEILLE', "L'article, ses résultats, notre regard critique", (s) => {
   ['piranha', 'pipe_short2', 'pipe_tall2'].forEach((n) => sprite(s, n));
   sprite(s, 'star_brick', { x: 11.625, y: 2.125 });
-  // les 4 pièces du modèle (page « Are you ready? »)
   [4.847, 5.759, 6.676, 7.588].forEach((x) => sprite(s, 'coin', { x, y: 4.824 }));
 }, NOTES.d1);
 
+const K1 = 'WORLD 1-1  -  LA VEILLE', K2 = 'WORLD 1-2  -  LE DUEL SUR V3', K3 = 'WORLD 1-3  -  LE VRAI JEU NES', K4 = 'WORLD 1-4  -  LE RECUL';
+
 {
-  const s = content('1-1 La veille', 'WORLD 1-1 - LA VEILLE', "L'ARTICLE", 'Le niveau 1-1 est-il vraiment une leçon de game design ? Les auteurs le testent avec des IA.');
-  card(s, 0.6, 1.9, 6.0, 3.05);
-  tag(s, "L'ARTICLE ÉTUDIÉ", 0.6, 1.9, 2.25, NAVY);
+  const s = content('1-1 La veille', K1, 'Le niveau 1-1 est-il une vraie leçon ?');
+  card(s, 0.6, 1.8, 6.2, 3.3);
+  tag(s, 'PRÉPUBLICATION ARXIV · JUIN 2026', 0.6, 1.8, 5);
   txt(s, 'Reinforcement Learning in Super Mario Bros: Curriculum, Pedagogy, and Optimal Level Design in World 1-1',
-      0.85, 2.42, 5.5, 0.85, { fontSize: 15, bold: true, italic: true });
-  txt(s, 'Jesse Ponnock & Lucas Ho · Johns Hopkins University', 0.85, 3.3, 5.5, 0.3, { fontSize: 13 });
-  txt(s, 'arXiv:2606.29511 · 28 juin 2026 · prépublication, pas encore relue par des pairs', 0.85, 3.6, 5.5, 0.5,
-      { fontSize: 12, color: GREY });
-  [['4', 'algorithmes'], ['3', 'niveaux (v1 à v3)'], ['120', 'entraînements']].forEach(([n, l], i) => {
-    const cx = 0.85 + i * 1.86;
-    s.addText([{ text: n + ' ', options: { bold: true, fontSize: 17 } }, { text: l, options: { fontSize: 11.5 } }],
-      { x: cx, y: 4.25, w: 1.74, h: 0.5, fontFace: FB, color: WHITE, fill: { color: NAVY }, align: 'center',
-        valign: 'middle', margin: 2, isTextBox: true });
+      0.9, 2.35, 5.6, 1.6, { fontSize: 19, bold: true, italic: true });
+  txt(s, 'J. Ponnock & L. Ho · Johns Hopkins University', 0.9, 4.25, 5.6, 0.5, { fontSize: 15, color: GREY });
+  [['QUESTION 1', 'Quel algorithme apprend le mieux le niveau ?'],
+   ['QUESTION 2', "L'ordre d'origine du niveau accélère-t-il l'apprentissage ?"]].forEach(([q, t], i) => {
+    const y = 1.8 + i * 1.72;
+    card(s, 7.1, y, 5.63, 1.58);
+    tag(s, q, 7.1, y, 3, ALGO.ql);
+    txt(s, t, 7.4, y + 0.55, 5.1, 0.9, { fontSize: 19, bold: true, valign: 'middle' });
   });
-  // les deux questions de recherche
-  [['Q1', 'Quel algorithme apprend le mieux le niveau, et cela dépend-il de sa difficulté ?'],
-   ['Q2', "L'ordre d'origine des 6 morceaux du niveau accélère-t-il l'apprentissage ?"]].forEach(([q, t], i) => {
-    const y = 1.9 + i * 1.58;
-    card(s, 6.95, y, 5.78, 1.42, YEL);
-    s.addText(q, { x: 7.12, y: y + 0.2, w: 0.9, h: 1.0, fontFace: FT, fontSize: 26, color: NAVY, valign: 'middle',
-                   margin: 0, isTextBox: true });
-    txt(s, t, 8.0, y + 0.16, 4.55, 1.1, { fontSize: 15, bold: true, valign: 'middle' });
-  });
-  // frise de veille
-  s.addText("VEILLE : D'OÙ VIENT L'ARTICLE", { x: 0.6, y: 5.18, w: 6, h: 0.3, fontFace: FB, fontSize: 12, bold: true,
-    color: YEL, margin: 0, isTextBox: true, shadow: sh(1.2), charSpacing: 1 });
-  s.addShape(pres.shapes.RECTANGLE, { x: 1.2, y: 5.93, w: 10.95, h: 0.06, fill: { color: WHITE }, line: NOLINE });
-  const tl = [['1992', 'Q-Learning\nWatkins & Dayan'], ['1994', 'SARSA\nRummery & Niranjan'], ['2009', 'Curriculum learning\nBengio et al.'],
-              ['2015', 'DQN\nMnih et al., Nature'], ['2017', 'PPO\nSchulman et al.'], ['2018', 'gym-super-mario-bros\nKautenja'],
-              ['2026', "L'article\nPonnock & Ho"]];
-  tl.forEach(([yr, lab], i) => {
-    const cx = 1.45 + i * (10.45 / 6);
-    const last = i === tl.length - 1;
-    s.addShape(pres.shapes.RECTANGLE, { x: cx - 0.09, y: 5.87, w: 0.18, h: 0.18, fill: { color: last ? YEL : WHITE },
-                                        line: { color: BLACK, width: 1 } });
-    s.addText(yr, { x: cx - 0.8, y: 5.5, w: 1.6, h: 0.32, fontFace: FT, fontSize: 12, color: last ? YEL : WHITE,
-                    align: 'center', valign: 'middle', margin: 0, isTextBox: true, shadow: sh(1.2) });
-    txt(s, lab, cx - 0.87, 6.12, 1.74, 0.62, { fontSize: 10.5, bold: true, align: 'center', lineSpacingMultiple: 0.95 });
+  [['4', 'algorithmes'], ['3', 'versions du niveau'], ['120', 'entraînements']].forEach(([n, l], i) => {
+    txt(s, [{ text: n + ' ', options: { fontSize: 34, bold: true } }, { text: l, options: { fontSize: 17 } }],
+        0.6 + i * 4.1, 5.45, 4.0, 0.8, { color: WHITE, valign: 'middle' });
   });
   s.addNotes(NOTES.article);
 }
 
 {
-  const s = content('1-1 La veille', 'WORLD 1-1 - LA VEILLE', 'LE TERRAIN ET LES JOUEURS',
-    'Une grille de 212 × 14 cases, 3 boutons, et 4 algorithmes en compétition.');
+  const s = content('1-1 La veille', K1, "D'où vient l'article");
+  const tl = [['1992', 'Q-Learning', 'Watkins & Dayan'], ['2009', 'Curriculum', 'Bengio et al.'],
+              ['2015', 'DQN', 'Mnih et al., Nature'], ['2017', 'PPO', 'Schulman et al.'], ['2026', "L'article", 'Ponnock & Ho']];
+  s.addShape(pres.shapes.RECTANGLE, { x: 1.4, y: 3.9, w: 10.55, h: 0.05, fill: { color: WHITE }, line: NOLINE });
+  tl.forEach(([yr, a, b], i) => {
+    const cx = 1.4 + i * (10.55 / 4);
+    const last = i === tl.length - 1;
+    s.addShape(pres.shapes.OVAL, { x: cx - 0.13, y: 3.79, w: 0.27, h: 0.27, fill: { color: last ? YEL : WHITE }, line: NOLINE });
+    txt(s, yr, cx - 1.2, 2.95, 2.4, 0.6, { fontSize: 28, bold: true, color: last ? YEL : WHITE, align: 'center', valign: 'middle' });
+    txt(s, a, cx - 1.2, 4.3, 2.4, 0.45, { fontSize: 17, bold: true, color: WHITE, align: 'center' });
+    txt(s, b, cx - 1.2, 4.75, 2.4, 0.4, { fontSize: 13, color: NAVY, align: 'center' });
+  });
+  punch(s, "Première tentative de mesurer la « pédagogie » d'un niveau avec des IA.", 6.0);
+  s.addNotes(NOTES.veille);
+}
+
+{
+  const s = content('1-1 La veille', K1, 'Le terrain et les 4 algorithmes');
   const lw = 12.13, lh = lw * 176 / 3392;
-  s.addImage({ path: asset('level_v3.png'), x: 0.6, y: 1.92, w: lw, h: lh, objectName: 'niveau_v3' });
-  s.addShape(pres.shapes.RECTANGLE, { x: 0.58, y: 1.9, w: lw + 0.04, h: lh + 0.04, fill: { type: 'none' }, line: { color: BLACK, width: 1.5 } });
-  txt(s, 'Le niveau v3 en entier : terrain (v1) + briques et blocs ? (v2) + 17 ennemis (v3)', 0.6, 2.62, 12.13, 0.28,
-      { fontSize: 12, bold: true, color: NAVY });
-  // règles
-  card(s, 0.6, 3.05, 4.6, 3.85);
-  tag(s, 'LES RÈGLES', 0.6, 3.05, 1.55);
-  txt(s, '3 boutons', 0.8, 3.55, 2, 0.3, { fontSize: 13, bold: true });
-  ['RIEN', 'DROITE', 'SAUT'].forEach((b, i) => {
-    s.addText(b, { x: 0.8 + i * 1.38, y: 3.88, w: 1.25, h: 0.38, fontFace: FT, fontSize: 11, color: WHITE,
-                   fill: { color: NAVY }, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
+  card(s, 0.6, 1.8, 12.13, lh + 0.9);
+  s.addImage({ path: asset('level_v3.png'), x: 0.6, y: 1.8, w: lw, h: lh, objectName: 'niveau_v3' });
+  txt(s, 'Grille 212 × 14  ·  3 boutons : rien, droite, saut  ·  +100 au drapeau, -50 à la mort', 0.9, 1.8 + lh + 0.18, 11.6, 0.5,
+      { fontSize: 15, bold: true, valign: 'middle' });
+  const algos = [['Q-Learning', 'ql', 'Apprend à chaque pas'], ['SARSA', 'sarsa', 'À chaque pas, plus prudent'],
+                 ['Monte Carlo', 'mc', 'Apprend en fin de partie'], ['DQN', 'dqn', 'Un réseau de neurones']];
+  algos.forEach(([n, k, d], i) => {
+    const cx = 0.6 + i * 3.08;
+    card(s, cx, 3.75, 2.89, 2.1);
+    txt(s, n, cx + 0.3, 3.98, 2.4, 0.55, { fontSize: 21, bold: true, color: ALGO[k], valign: 'middle' });
+    txt(s, d, cx + 0.3, 4.6, 2.35, 1.0, { fontSize: 16 });
   });
-  txt(s, 'Récompenses', 0.8, 4.42, 2, 0.3, { fontSize: 13, bold: true });
-  const rew = [['+100', 'drapeau'], ['-50', 'mort'], ['+0,5', 'pas à droite'], ['-0,1', 'sur place'],
-               ['+5', 'Goomba'], ['+3', 'bloc ?'], ['+1', 'brique']];
-  rew.forEach(([v, l], i) => {
-    const col = i < 4 ? 0 : 1, row = i < 4 ? i : i - 4;
-    const cx = 0.8 + col * 2.2, cy = 4.75 + row * 0.38;
-    s.addText([{ text: v + '  ', options: { bold: true, color: v.startsWith('-') ? RED : GREEN } },
-               { text: l, options: { color: NAVY } }],
-      { x: cx, y: cy, w: 2.15, h: 0.34, fontFace: FB, fontSize: 13, valign: 'middle', margin: 0, isTextBox: true });
-  });
-  txt(s, "L'IA de l'article voit sa case et 4 lignes autour d'elle (115 nombres).", 0.8, 6.3, 4.25, 0.5, { fontSize: 11.5, color: GREY });
-  // 4 algorithmes
-  const algos = [['Q-LEARNING', 'ql', 'Corrige sa note à chaque pas, en visant le meilleur coup suivant.', 'à chaque pas'],
-                 ['SARSA', 'sarsa', 'Corrige à chaque pas avec le coup vraiment joué, hasard compris : plus prudent.', 'à chaque pas'],
-                 ['MONTE CARLO', 'mc', 'Attend la fin de la partie, puis crédite tous les coups avec le score final.', 'en fin de partie'],
-                 ['DQN', 'dqn', 'Un réseau de neurones remplace le tableau, avec une mémoire de 50 000 coups.', 'par paquets de souvenirs']];
-  algos.forEach(([n, k, d, f], i) => {
-    const cx = 5.5 + (i % 2) * 3.68, cy = 3.05 + Math.floor(i / 2) * 1.98;
-    card(s, cx, cy, 3.55, 1.82);
-    tag(s, n, cx, cy, 2.0, ALGO[k]);
-    txt(s, d, cx + 0.18, cy + 0.48, 3.2, 0.9, { fontSize: 13.5, valign: 'top' });
-    txt(s, [{ text: 'Apprend : ', options: { bold: true } }, { text: f }], cx + 0.18, cy + 1.4, 3.25, 0.3,
-        { fontSize: 11.5, color: ALGO[k], valign: 'middle' });
-  });
+  punch(s, 'Les 3 premiers remplissent un tableau de notes ; DQN généralise.', 6.15);
   s.addNotes(NOTES.terrain);
 }
 
 {
-  const s = content('1-1 La veille', 'WORLD 1-1 - LA VEILLE', "CE QUE TROUVE L'ARTICLE",
-    "Monte Carlo gagne sur v3, et l'ordre d'origine du niveau accélère son apprentissage.");
-  card(s, 0.6, 1.9, 6.0, 4.98);
-  tag(s, 'Q1 · QUI APPREND LE MIEUX ?', 0.6, 1.9, 3.2);
-  txt(s, 'Victoires sur la v3 (moyenne de 5 graines, 10 000 épisodes)', 0.85, 2.42, 5.6, 0.3, { fontSize: 12, color: GREY });
-  hbars(s, { x: 0.85, y: 2.8, labelW: 1.75, barW: 3.65, rowH: 0.52, items: [
+  const s = content('1-1 La veille', K1, "Ce que trouve l'article");
+  card(s, 0.6, 1.8, 6.2, 4.4);
+  tag(s, 'QUI APPREND LE MIEUX ? (VICTOIRES SUR V3)', 0.6, 1.8, 5.5);
+  hbars(s, { x: 0.9, y: 2.45, labelW: 1.9, barW: 2.85, rowH: 0.85, items: [
     { label: 'Monte Carlo', value: 94.9, text: '94,9 %', color: ALGO.mc },
     { label: 'Q-Learning', value: 86.5, text: '86,5 %', color: ALGO.ql },
     { label: 'SARSA', value: 84.4, text: '84,4 %', color: ALGO.sarsa },
     { label: 'DQN', value: 76.4, text: '76,4 %', color: ALGO.dqn }] });
-  s.addShape(pres.shapes.RECTANGLE, { x: 0.85, y: 5.07, w: 5.5, h: 1.6, fill: { color: 'FFF4C2' }, line: { color: BLACK, width: 1 } });
-  txt(s, [{ text: 'DQN : 10,6 % en v1, 93,4 % en v2. ', options: { bold: true } },
-          { text: 'Sans blocs à frapper, il ne reçoit presque que des morts : il lui faut des récompenses fréquentes (« densité de récompense »).' }],
-      1.0, 5.15, 5.2, 1.45, { fontSize: 13, valign: 'middle' });
-  card(s, 6.95, 1.9, 5.78, 4.98);
-  tag(s, "Q2 · L'ORDRE DU NIVEAU COMPTE-T-IL ?", 6.95, 1.9, 4.05);
-  txt(s, 'Monte Carlo, v3 découpée en 6 morceaux (A à F)', 7.2, 2.42, 5.3, 0.3, { fontSize: 12, color: GREY });
-  [["Ordre d'origine", 'A B C D E F', '94,7 %', '0 échec sur 10', GREEN],
-   ['10 ordres au hasard', 'mélangés', '89,0 %', '1 échec sur 50', ORANGE],
-   ['Ordre inversé', 'F E D C B A', '48,5 %', '4 échecs sur 10', RED]].forEach(([a, b, v, f, c], i) => {
-    const cy = 2.85 + i * 0.78;
-    s.addShape(pres.shapes.RECTANGLE, { x: 7.2, y: cy, w: 5.28, h: 0.66, fill: { color: i % 2 ? ZEBRA : WHITE }, line: { color: 'C8D3EA', width: 0.75 } });
-    txt(s, [{ text: a, options: { bold: true, breakLine: true } }, { text: b, options: { fontSize: 11, color: GREY } }],
-        7.35, cy + 0.04, 2.3, 0.6, { fontSize: 13.5, valign: 'middle' });
-    txt(s, v, 9.6, cy, 1.35, 0.66, { fontSize: 22, bold: true, color: c, valign: 'middle', align: 'center' });
-    txt(s, f, 10.95, cy, 1.45, 0.66, { fontSize: 12, valign: 'middle', align: 'center' });
+  card(s, 7.1, 1.8, 5.63, 4.4);
+  tag(s, "L'ORDRE DU NIVEAU COMPTE-T-IL ?", 7.1, 1.8, 5);
+  [["Ordre d'origine", '94,7 %', GREEN], ['Ordres au hasard', '89,0 %', ORANGE], ['Ordre inversé', '48,5 %', RED]].forEach(([a, v, c], i) => {
+    const cy = 2.45 + i * 1.12;
+    txt(s, a, 7.4, cy, 2.8, 0.9, { fontSize: 17, bold: true, valign: 'middle' });
+    txt(s, v, 10.1, cy, 2.4, 0.9, { fontSize: 34, bold: true, color: c, valign: 'middle', align: 'right' });
   });
-  s.addShape(pres.shapes.RECTANGLE, { x: 7.2, y: 5.25, w: 5.28, h: 1.42, fill: { color: 'FFF4C2' }, line: { color: BLACK, width: 1 } });
-  txt(s, [{ text: "DQN : ~76 % quel que soit l'ordre. ", options: { bold: true } },
-          { text: "Sa mémoire tire ses souvenirs au hasard parmi toutes les parties : l'ordre est effacé. Conclusion des auteurs : le 1-1 a une vraie structure pédagogique." }],
-      7.35, 5.32, 5.0, 1.3, { fontSize: 13, valign: 'middle' });
+  punch(s, 'Leur conclusion : le 1-1 a une vraie structure pédagogique.', 6.4);
   s.addNotes(NOTES.findings);
 }
 
 {
-  const s = content('1-1 La veille', 'WORLD 1-1 - LA VEILLE', 'NOTRE LECTURE CRITIQUE',
-    'Une question originale, mais des erreurs et un protocole fragile.');
-  const cols = [
-    ['FORCES', GREEN, ["Question originale : mesurer la « pédagogie » d'un niveau avec des IA",
-      'Environnement codé de zéro, en 3 niveaux de difficulté',
-      'Expérience de contrôle avec DQN, qui isole le rôle de la mémoire',
-      'La densité de récompense proposée comme critère de choix']],
-    ['ERREURS', RED, ['Ordre inversé : 94,7 % dans le texte, 48,5 % dans leur tableau',
-      'Traverser le niveau : ~198 pas × 0,5, pas 99 × 0,5',
-      '« Seul ordre sans échec » : faux, 9 ordres au hasard sur 10 aussi',
-      'Monte Carlo v3 : 94,9 % (tableau) ou 94,7 % (conclusion) ?',
-      'Mort dite « aléatoire » dans un jeu déterministe']],
-    ['FAIBLESSES', ORANGE, ['10 ordres testés sur 720 possibles',
-      'Effectifs inégaux (10 graines contre 5) ; d = 7,04 avec 5 graines',
-      'Seul le DQN réglé à la main',
-      'Physique « fidèle à la NES » : saut fixe, ni gauche ni course',
-      'Pas de code publié',
-      "Une IA qui apprend vite ne prouve pas qu'un humain apprend mieux"]]];
+  const s = content('1-1 La veille', K1, 'Notre lecture critique');
+  const cols = [['FORCES', GREEN, ['Question originale', 'Environnement codé de zéro', 'Contrôle avec DQN bien pensé']],
+                ['ERREURS', RED, ['Ordre inversé : 94,7 % écrit au lieu de 48,5 %', '« Seul ordre sans échec » : faux', 'Calcul du score maximal faux']],
+                ['FAIBLESSES', ORANGE, ['10 ordres testés sur 720', 'Effet géant (d = 7) sur 5 graines', 'Aucun code publié']]];
   cols.forEach(([t, c, items], i) => {
     const cx = 0.6 + i * 4.14;
-    card(s, cx, 1.9, 3.85, 4.98);
-    tag(s, t, cx, 1.9, 1.75, c);
-    bullets(s, items, cx + 0.2, 2.5, 3.48, 4.3, { fontSize: 14.5, space: 12 });
+    card(s, cx, 1.8, 3.85, 4.1);
+    tag(s, t, cx, 1.8, 3, c, null, 13);
+    bullets(s, items, cx + 0.3, 2.45, 3.3, 3.3, { fontSize: 17, space: 16 });
   });
+  punch(s, "Surtout : une IA qui apprend vite ne prouve pas qu'un humain apprend mieux.", 6.2);
   s.addNotes(NOTES.critique);
 }
 
@@ -460,94 +390,59 @@ divider('1-2 Le duel sur v3', '1-2', 'LE DUEL SUR V3', 'Q-Learning, SARSA, Monte
 }, NOTES.d2);
 
 {
-  const s = content('1-2 Le duel sur v3', 'WORLD 1-2 - LE DUEL SUR V3', 'NOTRE MARIO, NOTRE PROTOCOLE',
-    'On a recréé le niveau 1-1, puis on a mis tous les algorithmes dans les mêmes conditions.');
-  card(s, 0.6, 1.9, 7.4, 4.98);
-  tag(s, 'ON A RECRÉÉ LE NIVEAU 1-1', 0.6, 1.9, 3.0);
-  s.addImage({ path: asset('ecran_titre.png'), x: 0.85, y: 2.5, w: 3.3, h: 3.094, objectName: 'ecran_titre' });
-  s.addShape(pres.shapes.RECTANGLE, { x: 0.83, y: 2.48, w: 3.34, h: 3.134, fill: { type: 'none' }, line: { color: BLACK, width: 1.25 } });
-  txt(s, "Notre écran titre : version NES, version de l'article, menu MODELES", 0.85, 5.7, 3.3, 0.9, { fontSize: 11, color: GREY });
-  bullets(s, [['Physique NES ', 'au sous-pixel près, en Python'],
-              ['Carte et ennemis ', 'vérifiés case par case contre les données du jeu d\'origine'],
-              ['2 environnements : ', "MarioGrid (la grille de l'article) et MarioNES (le vrai jeu)"],
-              ['Menu MODELES ', 'pour regarder jouer nos IA'],
-              ['103 tests ', 'automatiques']], 4.45, 2.55, 3.38, 4.2, { fontSize: 13.5, space: 10 });
-  card(s, 8.3, 1.9, 4.43, 4.98, YEL);
-  s.addText('MÊME PROTOCOLE POUR TOUS', { x: 8.3, y: 1.9, w: 4.43, h: 0.42, fontFace: FB, fontSize: 13, bold: true, color: WHITE,
-    fill: { color: NAVY }, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
-  [['Niveau', 'v3 (17 ennemis)'], ['Durée', '6000 épisodes'], ['Graines', '5 (42 à 46)'], ['Machine', 'MacBook Air M4'],
-   ['Énergie', 'mesurée par CodeCarbon']].forEach(([k, v], i) => {
-    const cy = 2.48 + i * 0.44;
-    txt(s, k, 8.5, cy, 1.25, 0.4, { fontSize: 13.5, bold: true, valign: 'middle' });
-    txt(s, v, 9.75, cy, 2.85, 0.4, { fontSize: 13.5, valign: 'middle' });
+  const s = content('1-2 Le duel sur v3', K2, 'Le même protocole pour tous');
+  card(s, 0.6, 1.8, 5.0, 5.05);
+  s.addImage({ path: asset('ecran_titre.png'), x: 0.9, y: 2.05, w: 4.4, h: 4.125, objectName: 'ecran_titre' });
+  txt(s, 'Notre copie du niveau 1-1, physique NES', 0.9, 6.25, 4.4, 0.45, { fontSize: 13, color: GREY, align: 'center' });
+  const rows = [['v3', 'le niveau avec ses 17 ennemis'], ['6000', 'épisodes par entraînement'], ['5', 'graines (42 à 46), même machine'],
+                ['50', 'parties de test avec 2 % de hasard : la robustesse']];
+  rows.forEach(([n, l], i) => {
+    const cy = 1.85 + i * 1.22;
+    card(s, 5.95, cy, 6.78, 1.06);
+    txt(s, n, 6.2, cy, 1.6, 1.06, { fontSize: 32, bold: true, color: ALGO.ql, valign: 'middle' });
+    txt(s, l, 7.85, cy, 4.7, 1.06, { fontSize: 17, valign: 'middle' });
   });
-  s.addShape(pres.shapes.RECTANGLE, { x: 8.5, y: 4.78, w: 4.03, h: 1.9, fill: { color: WHITE }, line: { color: BLACK, width: 1 } });
-  txt(s, [{ text: '+ 2 tests ajoutés', options: { bold: true, breakLine: true } },
-          { text: 'Test glouton : ', options: { bold: true } }, { text: '1 partie sans aucun hasard', options: { breakLine: true } },
-          { text: 'Test de robustesse : ', options: { bold: true } },
-          { text: '50 parties avec 2 % de boutons au hasard, le même pour tous' }],
-      8.65, 4.86, 3.75, 1.75, { fontSize: 13, valign: 'middle', paraSpaceAfter: 4 });
   s.addNotes(NOTES.protocole);
 }
 
 {
-  const s = content('1-2 Le duel sur v3', 'WORLD 1-2 - LE DUEL SUR V3', 'LES TABLEAUX APPRENNENT VITE',
-    'Q-Learning, SARSA et Monte Carlo gagnent 94 à 96 % des parties en 6000 épisodes.');
-  const vw = 9.0, vh = vw * 666 / 1920;
-  video(s, '01_qlearning_progression.mp4', 0.6, 1.92, vw, vh);
-  txt(s, 'Vidéo : la même IA (Q-Learning, graine 42) à 4 moments de son entraînement', 0.6, 1.92 + vh + 0.08, vw, 0.3,
-      { fontSize: 12, bold: true });
+  const s = content('1-2 Le duel sur v3', K2, 'Les méthodes à tableau apprennent vite');
+  const vw = 8.7, vh = vw * 666 / 1920;
+  video(s, '01_qlearning_progression.mp4', 0.6, 1.8, vw, vh);
+  txt(s, 'Q-Learning aux épisodes 100, 1000, 2200 et 6000', 0.6, 1.8 + vh + 0.1, vw, 0.35, { fontSize: 13, bold: true, color: WHITE });
   [['94,5 %', 'Q-Learning', 'ql'], ['96,2 %', 'SARSA', 'sarsa'], ['96,2 %', 'Monte Carlo', 'mc']].forEach(([v, n, k], i) => {
-    const cy = 1.92 + i * 1.06;
-    card(s, 9.9, cy, 2.83, 0.92);
-    txt(s, v, 10.1, cy + 0.04, 2.45, 0.5, { fontSize: 24, bold: true, valign: 'middle' });
-    chip(s, 10.12, cy + 0.6, k, 0.16);
-    txt(s, n + ' · victoires', 10.36, cy + 0.52, 2.3, 0.32, { fontSize: 11.5, color: GREY, valign: 'middle' });
+    kpi(s, 9.6, 1.8 + i * 1.08, 3.13, 0.95, v, n + ' · victoires', { size: 26, color: ALGO[k], labelSize: 12 });
   });
-  txt(s, '5 parties sans hasard gagnées sur 5, pour les 3', 9.9, 5.08, 2.83, 0.42, { fontSize: 11.5, bold: true, align: 'center' });
-  card(s, 0.6, 5.6, 12.13, 1.28, 'FFF4C2');
-  txt(s, [{ text: 'Monte Carlo attend les Goombas : ', options: { bold: true } },
-          { text: "503 pas par partie et 12 ennemis écrasés, contre ~267 pas et 6 à 7 ennemis pour les deux autres. C'est sa logique : dans une partie gagnée, il récompense tous les coups, même les attentes. Et c'est sûr : il meurt peu (3,7 %)." }],
-      0.85, 5.65, 11.7, 1.18, { fontSize: 14, valign: 'middle' });
+  punch(s, 'Monte Carlo attend les Goombas : 2× plus de pas, 2× plus d\'ennemis écrasés.', 6.0);
   s.addNotes(NOTES.tableaux);
 }
 
 {
-  const s = content('1-2 Le duel sur v3', 'WORLD 1-2 - LE DUEL SUR V3', 'DQN : DE 40 % À 94 %',
-    "Le DQN de l'article échoue chez nous. En lui montrant tout l'écran, il devient le plus robuste.");
+  const s = content('1-2 Le duel sur v3', K2, 'DQN : de 40 % à 94 % de victoires');
   const vw = 12.13, vh = vw * 338 / 1920;
-  video(s, '02_dqn_article_vs_notre.mp4', 0.6, 1.92, vw, vh);
-  txt(s, "Vidéo, même graine (44) : le DQN de l'article meurt colonne 154, le nôtre atteint le drapeau en 244 pas",
-      0.6, 1.92 + vh + 0.08, vw, 0.3, { fontSize: 12, bold: true });
-  const y0 = 4.55;
-  card(s, 0.6, y0, 7.25, 2.33);
-  tag(s, 'ÉTAPE PAR ÉTAPE · victoires, graines 42-43', 0.6, y0, 4.45);
-  hbars(s, { x: 0.8, y: y0 + 0.45, labelW: 3.05, barW: 2.75, rowH: 0.36, size: 12, items: [
-    { label: "0 · DQN de l'article", value: 44.2, text: '44 %', color: ALGO.dqn },
-    { label: '1 · + vue complète', value: 81.8, text: '82 %', color: ALGO.ours },
-    { label: '2 · 1 + Double DQN, 3 pas…', value: 78.2, text: '78 %', color: 'A99AD6' },
-    { label: '3 · 1 + réseau convolutif', value: 76.6, text: '77 %', color: 'A99AD6' },
-    { label: '4 · 1 + réglages fins', value: 94.5, text: '94,5 %', color: ALGO.ours }] });
-  card(s, 8.15, y0, 4.58, 2.33, YEL);
-  bullets(s, [["Il ne voyait que 4 lignes ", 'et son numéro de colonne : il apprenait le niveau par cœur.'],
-              ['Vue complète : ', '14 × 28 cases en 6 calques (sol, briques, blocs, ennemis et leur sens).'],
-              ['Optimisé avec Claude ', '(assistant IA), vérifié étape par étape.']],
-          8.33, y0 + 0.15, 4.25, 2.1, { fontSize: 12.5, space: 6 });
+  video(s, '02_dqn_article_vs_notre.mp4', 0.6, 1.8, vw, vh);
+  card(s, 0.6, 4.25, 7.6, 2.65);
+  hbars(s, { x: 0.9, y: 4.4, labelW: 3.0, barW: 3.0, rowH: 0.47, size: 14, items: [
+    { label: "DQN de l'article", value: 44.2, text: '44 %', color: ALGO.dqn },
+    { label: '+ vue complète', value: 81.8, text: '82 %', color: ALGO.ours },
+    { label: '+ Double DQN, 3 pas…', value: 78.2, text: '78 %', color: 'B9AEDF' },
+    { label: '+ réseau convolutif', value: 76.6, text: '77 %', color: 'B9AEDF' },
+    { label: '+ réglages fins', value: 94.5, text: '94,5 %', color: ALGO.ours }] });
+  txt(s, '+38 points', 8.6, 4.35, 4.13, 0.8, { fontSize: 38, bold: true, color: WHITE });
+  txt(s, "grâce à la vue complète : c'est ce que voit l'IA qui compte.", 8.6, 5.15, 4.13, 0.9, { fontSize: 17, bold: true, color: WHITE });
+  txt(s, 'Optimisé avec Claude, vérifié étape par étape.', 8.6, 6.2, 4.13, 0.6, { fontSize: 14, color: NAVY });
   s.addNotes(NOTES.dqn);
 }
 
 {
-  const s = content('1-2 Le duel sur v3', 'WORLD 1-2 - LE DUEL SUR V3', 'LE TABLEAU FINAL',
-    'À hasard égal, notre DQN est le plus robuste ; les tableaux font presque aussi bien.');
-  const head = ['Algorithme', 'Victoires¹', 'Robustesse²', 'Partie sans\nhasard gagnée', 'Retour\nmoyen', 'Parties pour\n80 % de victoires', 'Morts'];
-  const end = table(s, { x: 0.6, y: 1.92, colW: [2.55, 1.75, 1.85, 1.6, 1.4, 1.75, 1.23], headH: 0.66, rowH: 0.55,
-    head, rows: PERF.map((r) => [r[0], ...r.slice(2)]), keys: PERF.map((r) => r[1]), best: PERF_BEST, size: 13.5 });
-  txt(s, "¹ 500 dernières parties d'entraînement, avec une part de hasard différente (1 % tableaux, 2 % notre DQN, 5 % DQN de l'article).   ² 50 parties avec 2 % de boutons au hasard : le même test pour tous, c'est la colonne à comparer.",
-      0.6, end + 0.06, 12.13, 0.42, { fontSize: 11, color: NAVY });
-  card(s, 0.6, 5.85, 12.13, 1.03, 'FFF4C2');
-  txt(s, [{ text: 'Face à l\'article (victoires v3 : Q-Learning 86,5 % · SARSA 84,4 % · Monte Carlo 94,9 % · DQN 76,4 %) : ', options: { bold: true } },
-          { text: 'tendances confirmées, chiffres plus hauts chez nous. Les règles des ennemis ne sont pas précisées : nos agents en écrasent 2 à 4 fois plus.' }],
-      0.85, 5.88, 11.7, 0.97, { fontSize: 13.5, valign: 'middle' });
+  const s = content('1-2 Le duel sur v3', K2, 'Le tableau final');
+  const head = ['Algorithme', 'Victoires', 'Robustesse*', 'Retour moyen', 'Parties pour 80 %', 'Morts'];
+  const rows = PERF.map((r) => [r[0], r[2], r[3], r[5], r[6], r[7]]);
+  const best = [[1, 0], [2, 0], [4, 1], [4, 2], [4, 3], [2, 4]];
+  const end = table(s, { x: 0.6, y: 1.8, colW: [2.9, 1.9, 2.0, 1.8, 2.0, 1.53], headH: 0.6, rowH: 0.62, head, rows, best, size: 15 });
+  txt(s, '* 50 parties avec 2 % de hasard : le même test pour tous, c\'est la colonne à comparer.', 0.6, end + 0.12, 12.13, 0.4,
+      { fontSize: 13, color: WHITE });
+  punch(s, "Notre DQN est le plus robuste. Article : MC 94,9 % · QL 86,5 % · SARSA 84,4 % · DQN 76,4 %.", 6.2);
   s.addNotes(NOTES.tableau_final);
 }
 
@@ -559,86 +454,48 @@ divider('1-3 Le vrai jeu NES', '1-3', 'LE VRAI JEU NES', 'PPO sur la vraie physi
 }, NOTES.d3);
 
 {
-  const s = content('1-3 Le vrai jeu NES', 'WORLD 1-3 - LE VRAI JEU NES', 'PASSER AU VRAI JEU',
-    "Sur la vraie physique NES, une Q-table plafonne vers 35 % : il faut une IA qui généralise.");
-  card(s, 0.6, 1.9, 6.75, 4.98);
-  tag(s, "GRILLE DE L'ARTICLE OU VRAI JEU ?", 0.6, 1.9, 3.55);
-  table(s, { x: 0.8, y: 2.45, colW: [1.55, 2.0, 2.8], headH: 0.42, rowH: 0.62, size: 12.5, headSize: 11.5,
-    head: ['', "Grille de l'article", 'Vrai jeu NES'], leftCols: [1, 2],
-    rows: [['Mouvement', '1 case par pas', 'élan, accélération, course'],
-           ['Saut', 'toujours le même arc', '5 sauts selon la vitesse'],
-           ["Ce que voit l'IA", 'sa case + 4 lignes', '62 nombres : position, vitesses, 5 ennemis, relief'],
-           ['Boutons', '3', '5 (dont courir)']] });
-  s.addShape(pres.shapes.RECTANGLE, { x: 0.8, y: 5.9, w: 6.35, h: 0.8, fill: { color: 'FFF4C2' }, line: { color: BLACK, width: 1 } });
-  txt(s, [{ text: "Q-Learning de l'article sur le vrai jeu : ~35 % ", options: { bold: true } },
-          { text: 'de victoires, de façon instable (1 graine, 30 000 parties).' }], 0.95, 5.93, 6.1, 0.74, { fontSize: 13, valign: 'middle' });
-  card(s, 7.65, 1.9, 5.08, 4.98);
-  tag(s, 'PPO · OPENAI, 2017', 7.65, 1.9, 2.3, ALGO.ppo);
-  // petit schéma acteur / critique
-  s.addText('62 nombres\n(ce que voit Mario)', { x: 7.9, y: 2.55, w: 1.6, h: 1.15, fontFace: FB, fontSize: 11.5, bold: true,
-    color: WHITE, fill: { color: NAVY }, align: 'center', valign: 'middle', margin: 2, isTextBox: true });
-  [['ACTEUR', 'quel bouton ? (probabilités)', 2.42], ['CRITIQUE', 'la situation est-elle bonne ?', 3.22]].forEach(([n, d, cy]) => {
-    const yc = cy + 0.31, up = yc < 3.125;
-    s.addShape(pres.shapes.LINE, { x: 9.52, y: up ? yc : 3.125, w: 0.55, h: Math.abs(yc - 3.125), flipV: up,
-                                   line: { color: NAVY, width: 1.5, endArrowType: 'triangle' } });
-    s.addText([{ text: n, options: { bold: true, breakLine: true, fontSize: 12 } }, { text: d, options: { fontSize: 11 } }],
-      { x: 10.1, y: cy, w: 2.45, h: 0.62, fontFace: FB, color: NAVY, fill: { color: LIGHT.ppo }, valign: 'middle',
-        margin: mg(2, 4, 2, 8), isTextBox: true, line: { color: ALGO.ppo, width: 1 } });
+  const s = content('1-3 Le vrai jeu NES', K3, 'Passer au vrai jeu : PPO');
+  card(s, 0.6, 1.8, 5.9, 4.1);
+  tag(s, 'GRILLE DE L\'ARTICLE  VS  VRAI JEU', 0.6, 1.8, 5);
+  [['Mouvement', '1 case par pas', 'élan, course'], ['Saut', 'toujours le même', 'selon la vitesse'], ["Vue de l'IA", 'sa case', '62 nombres']].forEach(([a, b, c], i) => {
+    const cy = 2.5 + i * 1.05;
+    txt(s, a, 0.9, cy, 1.8, 0.8, { fontSize: 15, bold: true, valign: 'middle' });
+    txt(s, b, 2.7, cy, 1.75, 0.8, { fontSize: 15, color: GREY, valign: 'middle' });
+    txt(s, c, 4.5, cy, 1.85, 0.8, { fontSize: 15, bold: true, color: ALGO.ppo, valign: 'middle' });
   });
-  bullets(s, [['Il apprend la façon de jouer ', 'directement, sans tableau de notes'],
-              ['Par petits pas ', '(« proximal ») : chaque mise à jour reste proche de la précédente'],
-              ['2 petits réseaux, ', '~17 000 poids (notre DQN : 319 000)'],
-              ['Réglages optimisés avec Claude ', '(assistant IA)']], 7.9, 4.12, 4.65, 2.65, { fontSize: 13, space: 7 });
+  card(s, 6.83, 1.8, 5.9, 4.1);
+  tag(s, 'PPO · OPENAI, 2017', 6.83, 1.8, 4, ALGO.ppo);
+  bullets(s, [['Un acteur ', 'choisit le bouton'], ['Un critique ', 'juge la situation'],
+              ['Par petits pas, ', '~17 000 poids'], ['Réglé avec Claude', '']], 7.13, 2.5, 5.3, 3.2, { fontSize: 18, space: 14 });
+  punch(s, 'Une Q-table plafonne vers 35 % sur le vrai jeu : il faut une IA qui généralise.', 6.2);
   s.addNotes(NOTES.vrai_jeu);
 }
 
 {
-  const s = content('1-3 Le vrai jeu NES', 'WORLD 1-3 - LE VRAI JEU NES', 'PPO SUR LE VRAI NIVEAU',
-    'PPO gagne 81 % des parties et réussit la partie sans hasard avec les 5 graines.');
-  const vw = 4.55, vh = vw * 720 / 768;
-  video(s, '03_ppo_nes_v3.mp4', 0.6, 1.92, vw, vh);
-  txt(s, 'Vidéo : graine 42, sans hasard, vitesse réelle : drapeau en 336 pas', 0.6, 1.92 + vh + 0.08, vw, 0.5, { fontSize: 12, bold: true });
-  const kp = [['81,4 %', 'victoires (± 5,6), 500 dernières parties'], ['5 / 5', 'parties sans hasard gagnées'],
-              ['59,6 %', 'robustesse (46 à 82 % selon la graine)'], ['10,7 min', 'par graine : 3 M de pas, ~9 500 parties']];
-  kp.forEach(([v, l], i) => kpi(s, 5.5 + (i % 2) * 3.67, 1.92 + Math.floor(i / 2) * 1.32, 3.56, 1.18, v, l, { size: 25 }));
-  card(s, 5.5, 4.65, 7.23, 2.23);
-  tag(s, 'PROGRESSION · moyenne des 5 graines', 5.5, 4.65, 3.9);
-  const prog = [['0,5 M', 36], ['1 M', 69], ['1,5 M', 77], ['2 M', 80], ['2,5 M', 81], ['3 M', 79]];
-  const bx = 5.8, by = 5.12, bh = 1.25, bwid = 0.62, step = 1.12;
-  prog.forEach(([lab, v], i) => {
-    const x = bx + i * step, h = bh * v / 100;
-    s.addShape(pres.shapes.RECTANGLE, { x, y: by + bh - h, w: bwid, h, fill: { color: ALGO.ppo }, line: { color: BLACK, width: 1 } });
-    txt(s, v + ' %', x - 0.2, by + bh - h - 0.28, bwid + 0.4, 0.26, { fontSize: 11.5, bold: true, align: 'center' });
-    txt(s, lab, x - 0.2, by + bh + 0.04, bwid + 0.4, 0.26, { fontSize: 11, align: 'center', color: GREY });
-  });
+  const s = content('1-3 Le vrai jeu NES', K3, 'PPO gagne 81 % des parties');
+  const vw = 5.0, vh = vw * 720 / 768;
+  video(s, '03_ppo_nes_v3.mp4', 0.6, 1.8, vw, vh);
+  kpi(s, 6.0, 1.8, 3.25, 1.5, '81,4 %', 'victoires', { size: 34 });
+  kpi(s, 9.48, 1.8, 3.25, 1.5, '5 / 5', 'parties sans hasard gagnées', { size: 34 });
+  kpi(s, 6.0, 3.5, 3.25, 1.5, '59,6 %', 'robustesse', { size: 34 });
+  kpi(s, 9.48, 3.5, 3.25, 1.5, '11 min', 'par graine (3 M de pas)', { size: 34 });
+  txt(s, 'Point faible : il rattrape mal un bouton perturbé.', 6.0, 5.35, 6.73, 0.6, { fontSize: 17, bold: true, color: WHITE, valign: 'middle' });
   s.addNotes(NOTES.ppo);
 }
 
 {
-  const s = content('1-3 Le vrai jeu NES', 'WORLD 1-3 - LE VRAI JEU NES', 'ROUTE A : JOUER COMME UN HUMAIN',
-    'Champignon, fleur, tuyau secret et salle bonus : PPO réussit tout, et gagne 91 % des parties.');
-  const vw = 4.55, vh = vw * 720 / 768;
-  video(s, '04_ppo_route_a.mp4', 0.6, 1.92, vw, vh);
-  txt(s, 'Vidéo : graine 43, sans hasard : champignon, fleur, salle bonus, 21 pièces, drapeau', 0.6, 1.92 + vh + 0.08, vw, 0.5,
-      { fontSize: 12, bold: true });
-  const kp = [['91 %', 'victoires'], ['94 %', 'salle bonus'], ['97 %', 'champignon'], ['93 %', 'fleur'], ['80 %', 'robustesse']];
-  kp.forEach(([v, l], i) => kpi(s, 5.5 + i * 1.46, 1.92, 1.35, 1.08, v, l, { size: 21, labelSize: 11 }));
-  card(s, 5.5, 3.25, 7.23, 3.63);
-  tag(s, "L'IA FAIT CE QU'ON RÉCOMPENSE, PAS CE QU'ON VEUT", 5.5, 3.25, 7.23, RED);
-  const fixes = [['Restait dans la salle bonus jusqu\'à la fin du temps', 'pénalité de temps'],
-                 ['866 appuis sur « bas » devant la sortie', 'entrée et sortie séparées dans sa vue'],
-                 ['Collée à un tuyau en tenant droite + saut', 'règle du blocage : 150 pas sans rien de neuf = perdu'],
-                 ['Fleur jamais trouvée', 'bouton gauche ajouté']];
-  txt(s, 'Ce qu\'elle faisait', 5.72, 3.72, 3.35, 0.3, { fontSize: 11.5, bold: true, color: GREY });
-  txt(s, 'Ce qu\'on a corrigé', 9.25, 3.72, 3.3, 0.3, { fontSize: 11.5, bold: true, color: GREY });
-  fixes.forEach(([a, b], i) => {
-    const cy = 4.05 + i * 0.6;
-    s.addShape(pres.shapes.RECTANGLE, { x: 5.7, y: cy, w: 6.83, h: 0.54, fill: { color: i % 2 ? ZEBRA : WHITE }, line: NOLINE });
-    txt(s, a, 5.8, cy, 3.3, 0.54, { fontSize: 12.5, valign: 'middle' });
-    txt(s, b, 9.25, cy, 3.25, 0.54, { fontSize: 12.5, bold: true, valign: 'middle', color: GREEN });
+  const s = content('1-3 Le vrai jeu NES', K3, 'Route A : jouer comme un humain');
+  const vw = 5.0, vh = vw * 720 / 768;
+  video(s, '04_ppo_route_a.mp4', 0.6, 1.8, vw, vh);
+  [['91 %', 'victoires'], ['94 %', 'salle bonus'], ['97 %', 'champignon'], ['93 %', 'fleur']].forEach(([v, l], i) =>
+    kpi(s, 6.0 + i * 1.72, 1.8, 1.6, 1.25, v, l, { size: 24, labelSize: 12 }));
+  card(s, 6.0, 3.3, 6.73, 2.6);
+  tag(s, "L'IA FAIT CE QU'ON RÉCOMPENSE, PAS CE QU'ON VEUT", 6.0, 3.3, 6, RED);
+  [['Restait dans la salle bonus', 'pénalité de temps'], ['Collée contre un tuyau', 'règle du blocage'], ['Ne trouvait pas la fleur', 'bouton gauche']].forEach(([a, b], i) => {
+    const cy = 3.9 + i * 0.6;
+    txt(s, a, 6.3, cy, 3.6, 0.5, { fontSize: 15, valign: 'middle' });
+    txt(s, b, 9.9, cy, 2.7, 0.5, { fontSize: 15, bold: true, color: GREEN, valign: 'middle' });
   });
-  txt(s, 'Une dizaine de variantes · 2 blocs ajoutés au début du niveau · 5 graines × 3 M de pas',
-      5.7, 6.45, 6.85, 0.36, { fontSize: 11.5, color: GREY, valign: 'middle' });
   s.addNotes(NOTES.route_a);
 }
 
@@ -650,72 +507,47 @@ divider('1-4 Le recul', '1-4', 'LE RECUL', 'Énergie, auto-critique et ce qu\'on
 }, NOTES.d4);
 
 {
-  const s = content('1-4 Le recul', 'WORLD 1-4 - LE RECUL', "L'ÉNERGIE CONSOMMÉE",
-    "Tous nos entraînements finaux : 113 Wh, l'énergie pour faire bouillir 1 litre d'eau.");
-  const end = table(s, { x: 0.6, y: 1.92, colW: [2.35, 1.35, 1.45, 1.3, 1.15], headH: 0.62, rowH: 0.5,
-    head: ['Modèle (par graine)', 'Durée', 'Énergie', 'CO2', 'vs\nQ-Learning'],
-    rows: COST.map((r) => [r[0], ...r.slice(2)]), keys: COST.map((r) => r[1]), best: [[1, 1], [1, 2]], size: 13 });
-  txt(s, 'CodeCarbon sur MacBook Air M4 (estimation d\'après la charge du processeur), électricité française ~56 g de CO2 par kWh.',
-      0.6, end + 0.1, 7.6, 0.55, { fontSize: 11, color: NAVY });
-  card(s, 8.55, 1.92, 4.18, 1.62, YEL);
-  txt(s, '113 Wh', 8.75, 2.0, 3.8, 0.7, { fontSize: 32, bold: true, valign: 'middle' });
-  txt(s, "pour tous nos entraînements finaux : ~1 L d'eau bouillie, ~7 charges de smartphone, 6 g de CO2",
-      8.75, 2.68, 3.8, 0.8, { fontSize: 12.5, valign: 'top' });
-  card(s, 8.55, 3.72, 4.18, 1.5);
-  txt(s, '75 %', 8.75, 3.8, 3.8, 0.62, { fontSize: 28, bold: true, color: RED, valign: 'middle' });
-  txt(s, 'du total pour le seul réseau convolutif (carte graphique)… pour un moins bon résultat', 8.75, 4.4, 3.8, 0.78, { fontSize: 12.5 });
-  card(s, 8.55, 5.4, 4.18, 1.48);
-  txt(s, '×88', 8.75, 5.48, 3.8, 0.62, { fontSize: 28, bold: true, color: ALGO.ours, valign: 'middle' });
-  txt(s, "pour notre DQN face à Q-Learning, pour 5 points de robustesse en plus", 8.75, 6.08, 3.8, 0.75, { fontSize: 12.5 });
+  const s = content('1-4 Le recul', K4, "L'énergie consommée");
+  const rows = COST.map((r) => [r[0], r[2], r[3], r[5]]);
+  table(s, { x: 0.6, y: 1.8, colW: [2.7, 1.5, 1.6, 1.5], headH: 0.55, rowH: 0.58,
+             head: ['Par graine', 'Durée', 'Énergie', 'vs Q-L'], rows, best: [[1, 1]], size: 15 });
+  kpi(s, 8.3, 1.8, 4.43, 1.55, '113 Wh', 'tous nos entraînements ≈ 1 L d\'eau bouillie', { size: 34 });
+  kpi(s, 8.3, 3.55, 4.43, 1.55, '75 %', 'pour le seul réseau convolutif, moins bon', { size: 34, color: RED });
+  kpi(s, 8.3, 5.3, 4.43, 1.55, '×88', 'notre DQN face à Q-Learning', { size: 34, color: ALGO.ours });
   s.addNotes(NOTES.energie);
 }
 
 {
-  const s = content('1-4 Le recul', 'WORLD 1-4 - LE RECUL', 'NOTRE AUTO-CRITIQUE',
-    'Ce que nos résultats ne disent pas, et ce que nous ferions avec plus de temps.');
-  card(s, 0.6, 1.9, 6.75, 4.98);
-  tag(s, 'NOS LIMITES', 0.6, 1.9, 1.75, RED);
-  bullets(s, [['6000 épisodes ', 'au lieu de 10 000, pour tout faire tourner sur un portable'],
-              ["L'expérience sur l'ordre du niveau ", "n'a pas été refaite"],
-              ['Règles des ennemis devinées : ', 'nos Goombas sont plus faciles, nos scores plus hauts'],
-              ['Notre DQN réglé sur les graines 42 et 43, ', 'puis évalué avec elles ; garder sa meilleure version l\'avantage au test de robustesse'],
-              ['Énergie estimée, ', 'pas mesurée par un capteur, et pour toute la machine'],
-              ['Route A façonnée à la main : ', "l'IA apprend ce qu'on a prévu pour elle"]],
-          0.82, 2.45, 6.35, 4.35, { fontSize: 13.5, space: 8 });
-  card(s, 7.65, 1.9, 5.08, 2.4, YEL);
-  tag(s, "L'IA COMME OUTIL", 7.65, 1.9, 2.05);
-  txt(s, [{ text: 'DQN et PPO optimisés avec Claude (assistant IA). ', options: { bold: true } },
-          { text: 'Gain de temps énorme, mais chaque choix doit être compris et vérifié : étude étape par étape, test de robustesse, rejeu des modèles.' }],
-      7.85, 2.38, 4.7, 1.85, { fontSize: 13.5, valign: 'middle' });
-  card(s, 7.65, 4.48, 5.08, 2.4);
-  tag(s, 'AVEC PLUS DE TEMPS', 7.65, 4.48, 2.3, GREEN);
-  bullets(s, ["Refaire l'expérience de l'ordre avec Q-Learning et SARSA (question ouverte de l'article)",
-              '10 000 épisodes et plus de graines',
-              "Tester la vraie question avec des joueurs humains"], 7.85, 5.0, 4.7, 1.82, { fontSize: 13, space: 6 });
+  const s = content('1-4 Le recul', K4, 'Notre auto-critique');
+  card(s, 0.6, 1.8, 6.6, 5.05);
+  tag(s, 'NOS LIMITES', 0.6, 1.8, 3, RED);
+  bullets(s, ['6000 épisodes au lieu de 10 000', "Expérience sur l'ordre du niveau non refaite", 'Règles des ennemis devinées',
+              'DQN réglé et évalué sur les mêmes graines', 'Énergie estimée, sans capteur'], 0.9, 2.45, 6.1, 4.2, { fontSize: 17, space: 14 });
+  card(s, 7.5, 1.8, 5.23, 2.4);
+  tag(s, "L'IA COMME OUTIL", 7.5, 1.8, 3, ALGO.ql);
+  txt(s, 'Claude a optimisé DQN et PPO : un gain de temps, mais chaque choix a été vérifié.', 7.8, 2.4, 4.7, 1.6, { fontSize: 16, valign: 'middle' });
+  card(s, 7.5, 4.45, 5.23, 2.4);
+  tag(s, 'AVEC PLUS DE TEMPS', 7.5, 4.45, 3, GREEN);
+  bullets(s, ["Refaire l'ordre du niveau avec Q-Learning et SARSA", 'Tester avec de vrais joueurs'], 7.8, 5.05, 4.7, 1.7, { fontSize: 16, space: 10 });
   s.addNotes(NOTES.autocritique);
 }
 
 {
-  const s = content('1-4 Le recul', 'WORLD 1-4 - LE RECUL', "CE QU'ON RETIENT", null);
-  const take = [['1', 'Niveau discret : les tableaux suffisent', '95 % de victoires en 16 secondes, avec des résultats reproductibles au bit près.'],
-                ['2', "Ce que voit l'IA compte plus que la taille du réseau", 'Notre DQN passe de 40 % à 94 % grâce à la vue complète ; le réseau convolutif, bien plus coûteux, n\'apporte rien.'],
-                ['3', 'Sur le vrai jeu, le deep RL prend le relais', 'PPO : 81 % sur le niveau, 91 % sur la Route A. Et c\'est la récompense qui décide du comportement.']];
+  const s = content('1-4 Le recul', K4, "Ce qu'on retient");
+  const take = [['1', 'Niveau simple : les tableaux suffisent', '95 % en 16 secondes'],
+                ['2', "Ce que voit l'IA compte plus que la taille du réseau", 'DQN : 40 % → 94 %'],
+                ['3', 'Sur le vrai jeu, le deep RL prend le relais', 'PPO : 81 %, Route A : 91 %']];
   take.forEach(([n, t, d], i) => {
     const cx = 0.6 + i * 4.14;
-    card(s, cx, 1.5, 3.85, 3.95);
-    s.addText(n, { x: cx + 0.25, y: 1.75, w: 0.75, h: 0.75, fontFace: FT, fontSize: 28, color: NAVY, fill: { color: YEL },
-                   align: 'center', valign: 'middle', margin: 0, isTextBox: true, line: { color: BLACK, width: 1.25 } });
-    txt(s, t, cx + 0.25, 2.7, 3.35, 0.95, { fontSize: 17, bold: true, valign: 'top' });
-    txt(s, d, cx + 0.25, 3.7, 3.35, 1.6, { fontSize: 14, valign: 'top' });
+    card(s, cx, 1.8, 3.85, 4.0);
+    txt(s, n, cx + 0.3, 2.0, 1, 0.9, { fontSize: 40, bold: true, color: ALGO.ql });
+    txt(s, t, cx + 0.3, 2.95, 3.3, 1.5, { fontSize: 20, bold: true });
+    txt(s, d, cx + 0.3, 4.75, 3.3, 0.8, { fontSize: 17, color: GREY });
   });
-  s.addShape(pres.shapes.RECTANGLE, { x: 0.6, y: 5.75, w: 12.13, h: 1.12, fill: { color: NAVY }, line: { color: BLACK, width: 1.5 }, shadow: sh(3.5) });
-  txt(s, [{ text: "Et l'article ? ", options: { bold: true, color: YEL } },
-          { text: 'Ses grandes tendances tiennent (Monte Carlo au moins aussi bon, son DQN sous les tableaux), mais ses chiffres et sa conclusion sur DQN dépendent de détails qu\'il ne publie pas.', options: { color: WHITE } }],
-      0.85, 5.8, 11.7, 1.02, { fontSize: 15, valign: 'middle' });
+  punch(s, "L'article : tendances confirmées, mais ses chiffres dépendent de détails non publiés.", 6.15);
   s.addNotes(NOTES.conclusion);
 }
 
-// Merci / Questions ------------------------------------------------------------------
 {
   pres.addSection({ title: 'Fin' });
   const s = newSlide('Fin');
@@ -737,20 +569,20 @@ divider('1-4 Le recul', '1-4', 'LE RECUL', 'Énergie, auto-critique et ce qu\'on
 // =============================================================================
 pres.addSection({ title: 'Annexes' });
 {
-  const s = content('Annexes', 'ANNEXE A', 'COMPORTEMENT EN JEU', 'Par partie, 500 dernières parties (v3, 6000 épisodes, 5 graines).');
+  const s = content('Annexes', 'ANNEXE A', 'Comportement en jeu', 'Par partie, 500 dernières parties (v3, 6000 épisodes, 5 graines).');
   table(s, { x: 0.6, y: 1.95, colW: [2.75, 1.9, 1.9, 1.9, 1.88, 1.8], headH: 0.62, rowH: 0.58, size: 13.5,
     head: ['Algorithme', 'Ennemis\nécrasés', 'Briques\ncassées', 'Blocs ?\nfrappés', 'Pas par\npartie', '1re victoire\n(épisode)'],
     rows: [['Q-Learning', '6,1', '2,9', '4,3', '268', '1322 ± 356'], ['SARSA', '6,9', '3,6', '4,7', '266', '1178 ± 293'],
            ['Monte Carlo', '12,1', '4,9', '5,3', '503', '1108 ± 443'], ["DQN de l'article", '6,0', '2,2', '5,1', '205', '628 ± 194'],
            ['Notre DQN', '12,6', '5,0', '7,1', '246', '632 ± 117']],
-    keys: ['ql', 'sarsa', 'mc', 'dqn', 'ours'], best: [[4, 0], [4, 1], [4, 2]] });
+    best: [[4, 0], [4, 1], [4, 2]] });
   card(s, 0.6, 5.65, 12.13, 1.2, 'FFF4C2');
   txt(s, "Article : 3,3 à 3,8 ennemis par partie pour les tableaux, 1,4 pour DQN. Nos agents en écrasent 2 à 4 fois plus : l'article ne précise pas les règles des ennemis (activation, rebond, chute), nos choix les rendent sans doute plus faciles à écraser.",
       0.85, 5.7, 11.7, 1.1, { fontSize: 13.5, valign: 'middle' });
   s.addNotes("Annexe : à montrer si le jury demande pourquoi nos retours sont plus élevés que ceux de l'article.");
 }
 {
-  const s = content('Annexes', 'ANNEXE B', 'LES RÉGLAGES', "Ceux de l'article, et ce que nous avons changé.");
+  const s = content('Annexes', 'ANNEXE B', 'Les réglages', "Ceux de l'article, et ce que nous avons changé.");
   table(s, { x: 0.6, y: 1.95, colW: [3.0, 4.4, 4.73], headH: 0.5, rowH: 0.5, size: 13,
     head: ['Réglage', "Article (et nos tableaux)", 'Notre DQN (étape 4)'], leftCols: [1, 2],
     rows: [['Épisodes', '10 000 (nous : 6000 pour tous)', '6000'], ['Graines', '5 (42 à 46)', '5 (42 à 46)'],
@@ -763,14 +595,14 @@ pres.addSection({ title: 'Annexes' });
   s.addNotes("Annexe : réglages de l'article et de notre DQN.");
 }
 {
-  const s = content('Annexes', 'ANNEXE C', "CE QUE VOIT LE DQN DE L'ARTICLE", 'Seules 4 lignes de 28 cases autour de Mario, plus sa position : ni trous ni sens des ennemis.');
+  const s = content('Annexes', 'ANNEXE C', "Ce que voit le DQN de l'article", 'Seules 4 lignes de 28 cases autour de Mario, plus sa position : ni trous ni sens des ennemis.');
   const ih = 5.0, iw = ih * 1650 / 1100;
   card(s, (W - iw) / 2 - 0.1, 1.87, iw + 0.2, ih + 0.16, WHITE);
   s.addImage({ path: asset('observation_v3.png'), x: (W - iw) / 2, y: 1.95, w: iw, h: ih, objectName: 'observation_v3' });
   s.addNotes("Annexe : pourquoi le DQN de l'article apprend le niveau par cœur.");
 }
 {
-  const s = content('Annexes', 'ANNEXE D', 'NOTRE DQN, ÉTAPE PAR ÉTAPE', 'Graines 42 et 43, 6000 épisodes (étude d\'ablation).');
+  const s = content('Annexes', 'ANNEXE D', 'Notre DQN, étape par étape', 'Graines 42 et 43, 6000 épisodes (étude d\'ablation).');
   table(s, { x: 0.6, y: 1.95, colW: [0.8, 5.2, 1.6, 1.75, 1.35, 1.43], headH: 0.62, rowH: 0.6, size: 13,
     head: ['Étape', 'Changement', 'Victoires', 'Robustesse\n(42 / 43)', 'Parties\npour 50 %', 'Parties\npour 80 %'],
     rows: [['0', "DQN de l'article (sa vue)", '44,2 ± 6,8 %', '62 / 74 %', '5047', 'jamais'],
@@ -785,7 +617,7 @@ pres.addSection({ title: 'Annexes' });
   s.addNotes('Annexe : détail de l\'étude étape par étape de notre DQN.');
 }
 {
-  const s = content('Annexes', 'ANNEXE E', 'PPO PAR GRAINE', 'Vrai jeu NES, 3 M de pas par graine.');
+  const s = content('Annexes', 'ANNEXE E', 'PPO par graine', 'Vrai jeu NES, 3 M de pas par graine.');
   table(s, { x: 0.6, y: 1.95, colW: [1.2, 1.55, 1.55, 1.6], headH: 0.6, rowH: 0.5, size: 13,
     head: ['Graine', 'Victoires', 'Robustesse', 'Sans hasard'],
     rows: [['42', '87,6 %', '54 %', '336 pas'], ['43', '74,8 %', '64 %', '326 pas'], ['44', '77,0 %', '52 %', '347 pas'],
@@ -800,7 +632,7 @@ pres.addSection({ title: 'Annexes' });
   s.addNotes('Annexe : détail de PPO par graine.');
 }
 {
-  const s = content('Annexes', 'ANNEXE F', 'ROUTE A : LES RÉGLAGES', 'Niveau, boutons et récompense de la version finale.');
+  const s = content('Annexes', 'ANNEXE F', 'Route A : les réglages', 'Niveau, boutons et récompense de la version finale.');
   card(s, 0.6, 1.95, 5.9, 4.9);
   tag(s, 'CONFIGURATION FINALE', 0.6, 1.95, 2.6);
   bullets(s, [['Niveau : ', 'complet, avec salle bonus ; bloc champignon (col. 34) et bloc fleur pour Mario grand (col. 36) ajoutés'],
@@ -814,7 +646,7 @@ pres.addSection({ title: 'Annexes' });
   s.addNotes('Annexe : réglages de la Route A.');
 }
 {
-  const s = content('Annexes', 'ANNEXE G', 'RÉFÉRENCES', null);
+  const s = content('Annexes', 'ANNEXE G', 'Références', null);
   const refs = [
     'J. Ponnock, L. Ho. Reinforcement Learning in Super Mario Bros: Curriculum, Pedagogy, and Optimal Level Design in World 1-1. arXiv:2606.29511, 2026.',
     'R. S. Sutton, A. G. Barto. Reinforcement Learning: An Introduction, 2e éd. MIT Press, 2018.',
