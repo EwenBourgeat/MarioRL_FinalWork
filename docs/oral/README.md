@@ -3,6 +3,7 @@
 | Fichier | Contenu |
 |---|---|
 | `Oral_RL_Mario.pptx` | Le diaporama : 23 diapos pour environ 20 minutes, puis 7 diapos d'annexe pour les questions du jury. Notes de l'orateur et vidéos incluses |
+| `Slide_PPO.pptx` | Une diapo bonus qui explique PPO (acteur et critique), au même style, à ajouter au diaporama si besoin (notes de l'orateur incluses) |
 | `Notes_oral.md` | Le texte à dire, diapo par diapo, avec la durée de chacune (environ 19 minutes au total) |
 | `videos/` | Les 4 vidéos, en MP4 |
 | `fabrication/` | Les scripts qui fabriquent les vidéos, les images et le diaporama |
@@ -38,6 +39,7 @@ python docs/oral/fabrication/videos_nes.py ppo_nes_v3_s42_3m 03_ppo_nes_v3.mp4
 python docs/oral/fabrication/videos_nes.py ppo_nes_full_a_s43_3m_b 04_ppo_route_a.mp4
 python docs/oral/fabrication/make_assets.py
 NODE_PATH=<dossier node_modules> sh docs/oral/fabrication/build.sh
+PPO_ONLY=1 DECK_OUT=$PWD/docs/oral/Slide_PPO.pptx NODE_PATH=<dossier node_modules> node docs/oral/fabrication/build_deck.js   # diapo bonus PPO
 python docs/oral/fabrication/export_notes.py
 ```
 

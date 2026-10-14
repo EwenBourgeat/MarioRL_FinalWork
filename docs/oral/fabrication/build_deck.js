@@ -60,12 +60,12 @@ function fr(t) {
 }
 let slideNo = 0;
 
-function newSlide(section) {
+var newSlide = function newSlide(section) {
   const s = pres.addSlide({ sectionTitle: section });
   s.background = { color: SKY };
   slideNo += 1;
   return s;
-}
+};
 
 // --- éléments communs ---------------------------------------------------------
 function sprite(s, name, o = {}) {
@@ -215,6 +215,67 @@ function punch(s, text, y = 6.45) {
 function bigTitle(s, text, x, y, w, h, size, color = WHITE, align = 'center') {
   s.addText(fr(text), { x, y, w, h, fontFace: FT, fontSize: size, color, align, valign: 'middle', margin: 0,
                     isTextBox: true, shadow: sh(Math.max(2, size * 0.05)), lineSpacingMultiple: 1.0, objectName: 'grand_titre' });
+}
+
+// =============================================================================
+// DIAPO BONUS : PPO expliqué (fichier à part : Slide_PPO.pptx)
+//   PPO_ONLY=1 DECK_OUT=docs/oral/Slide_PPO.pptx node build_deck.js
+// =============================================================================
+function ppoSlide() {
+  const s = content('1-3 Le vrai jeu NES', 'WORLD 1-3  -  LE VRAI JEU NES', 'PPO : un acteur et un critique');
+  // entrée
+  card(s, 0.6, 1.8, 3.0, 2.95);
+  tag(s, 'CE QUE VOIT MARIO', 0.6, 1.8, 2.6);
+  txt(s, '62 nombres', 0.9, 2.45, 2.5, 0.7, { fontSize: 28, bold: true, color: ALGO.ppo, valign: 'middle' });
+  txt(s, 'sa position, ses vitesses, les ennemis proches, le relief devant lui', 0.9, 3.2, 2.5, 1.4, { fontSize: 15 });
+  // acteur
+  card(s, 4.3, 1.8, 8.43, 1.4);
+  tag(s, "L'ACTEUR · IL JOUE", 4.3, 1.8, 3.2, ALGO.ppo);
+  txt(s, 'Choisit le bouton, en tirant au sort selon des probabilités', 4.6, 2.35, 4.0, 0.75, { fontSize: 16, bold: true, valign: 'middle' });
+  hbars(s, { x: 8.9, y: 1.95, labelW: 1.05, barW: 2.0, rowH: 0.36, size: 13, items: [
+    { label: 'Droite', value: 60, text: '60 %', color: ALGO.ppo },
+    { label: 'Saut', value: 35, text: '35 %', color: 'E7A6CC' },
+    { label: 'Rien', value: 5, text: '5 %', color: 'E7A6CC' }] });
+  // critique
+  card(s, 4.3, 3.35, 8.43, 1.4);
+  tag(s, 'LE CRITIQUE · IL JUGE', 4.3, 3.35, 3.2, ALGO.ql);
+  txt(s, "Juge la situation : combien de points j'espère à partir d'ici ?", 4.6, 3.9, 4.3, 0.75, { fontSize: 16, bold: true, valign: 'middle' });
+  txt(s, '≈ 20 points', 8.9, 3.5, 3.6, 0.8, { fontSize: 30, bold: true, color: ALGO.ql, valign: 'middle', align: 'center' });
+  txt(s, "(exemple : Mario devant un trou)", 8.9, 4.3, 3.6, 0.35, { fontSize: 12, color: GREY, align: 'center' });
+  // flèches
+  [[2.5, 3.0, 4.3, 2.5], [3.65, 3.8, 4.3, 4.05]].forEach(() => {});
+  s.addShape(pres.shapes.LINE, { x: 3.65, y: 2.5, w: 0.6, h: 0.9, flipV: true, line: { color: WHITE, width: 2, endArrowType: 'triangle' } });
+  s.addShape(pres.shapes.LINE, { x: 3.65, y: 3.3, w: 0.6, h: 0.75, line: { color: WHITE, width: 2, endArrowType: 'triangle' } });
+  // apprentissage en 3 temps
+  card(s, 0.6, 4.95, 12.13, 1.85);
+  tag(s, 'COMMENT ILS APPRENNENT', 0.6, 4.95, 4);
+  [['1', "L'acteur appuie sur un bouton"], ['2', 'On compare : points réels contre points prévus par le critique'],
+   ['3', "Mieux que prévu : on augmente la probabilité de ce bouton"]].forEach(([n, t], i) => {
+    const cx = 0.9 + i * 4.0;
+    txt(s, n, cx, 5.55, 0.5, 0.9, { fontSize: 34, bold: true, color: ALGO.ppo, valign: 'middle' });
+    txt(s, t, cx + 0.55, 5.55, 3.1, 1.0, { fontSize: 15, valign: 'middle' });
+  });
+  s.addNotes(`[1:00]
+À l'écran : ce que voit Mario, l'acteur, le critique, et les 3 étapes.
+On dit :
+- PPO utilise deux petits réseaux de neurones qui se partagent le travail.
+- Les deux reçoivent la même chose : 62 nombres qui décrivent la situation de Mario.
+- L'acteur joue : il donne une probabilité pour chaque bouton, et on tire le bouton au sort selon ces probabilités.
+- Le critique ne joue jamais : il juge la situation. Il dit combien de points on peut espérer à partir d'ici.
+- Pour apprendre, on compare le résultat réel avec ce que le critique prévoyait.
+- Si c'est mieux que prévu, l'acteur augmente la probabilité de ce bouton. Si c'est moins bien, il la diminue.
+- Exemple : Mario est devant un trou, le critique espère 20 points. L'acteur saute et finit à 60 points. C'était une bonne idée, donc il refera ce saut.
+- Le mot « proximal » veut dire que chaque correction est petite, pour ne pas tout casser d'un coup.`);
+}
+
+if (process.env.PPO_ONLY) {
+  ppoSlide();
+  pres.writeFile({ fileName: OUT }).then((f) => console.log('écrit :', f));
+  // le reste du script construit le grand diaporama dans une instance jetable
+  const sink = new pptxgen();
+  sink.layout = 'LAYOUT_WIDE';
+  newSlide = () => { slideNo += 1; const x = sink.addSlide(); x.background = { color: SKY }; return x; };
+  pres.addSection = () => {};
 }
 
 // =============================================================================
@@ -666,4 +727,4 @@ pres.addSection({ title: 'Annexes' });
   s.addNotes('Annexe : références citées.');
 }
 
-pres.writeFile({ fileName: OUT }).then((f) => console.log('écrit :', f, '-', slideNo, 'diapos'));
+if (!process.env.PPO_ONLY) pres.writeFile({ fileName: OUT }).then((f) => console.log('écrit :', f, '-', slideNo, 'diapos'));
